@@ -46,11 +46,6 @@ extract_plugin_version() {
   fi
 }
 
-# extract_cursor_plugin_version - alias kept for older callers
-extract_cursor_plugin_version() {
-  extract_plugin_version "$1"
-}
-
 # extract_skill_version - Get version from SKILL.md YAML frontmatter
 # Args: skill_file_path
 # Output: Version string (e.g., "1.2.0") or empty if not found

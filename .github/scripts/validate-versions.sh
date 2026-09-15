@@ -100,45 +100,6 @@ validate_skill_versions() {
   [ $failed -eq 0 ]
 }
 
-# Validate the Cursor sidecar plugin.json version when the file exists
-# Returns 0 if matching or absent, 1 if mismatched
-validate_cursor_plugin_version() {
-  local plugin_name="$1"
-  local expected_version="$2"
-
-  local plugin_dir
-  plugin_dir=$(_get_plugin_source_dir "$plugin_name")
-  local cursor_json="${plugin_dir}/.cursor-plugin/plugin.json"
-
-  if [ ! -f "$cursor_json" ]; then
-    log_warning "Plugin '$plugin_name' has no .cursor-plugin/plugin.json"
-    return 0
-  fi
-
-  local cursor_version
-  cursor_version=$(extract_cursor_plugin_version "$plugin_name")
-  local relative_path="${cursor_json#"$REPO_ROOT/"}"
-
-  if [ -z "$cursor_version" ]; then
-    log_error "$relative_path: version not found"
-    if [ "$GITHUB_ACTIONS_MODE" = true ]; then
-      echo "::error file=$relative_path,title=Missing version::.cursor-plugin/plugin.json missing 'version' field"
-    fi
-    return 1
-  fi
-
-  if [ "$cursor_version" = "$expected_version" ]; then
-    log_success "$relative_path: version $cursor_version"
-    return 0
-  fi
-
-  log_error "$relative_path: version mismatch (expected $expected_version, found $cursor_version)"
-  if [ "$GITHUB_ACTIONS_MODE" = true ]; then
-    echo "::error file=$relative_path,title=Version mismatch::Expected $expected_version, found $cursor_version"
-  fi
-  return 1
-}
-
 # Validate CHANGELOG.md version for a plugin
 # Returns 0 if matching, 1 if mismatched
 validate_changelog_version() {

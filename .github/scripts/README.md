@@ -67,7 +67,7 @@ Updates all issue template dropdowns by scanning the repository for plugins, com
 
 ### validate-versions.sh
 
-Read-only validation for CI/CD pipelines. Verifies that plugin versions are synchronized across plugin.json (authoritative source), the Cursor sidecar plugin.json when present, SKILL.md frontmatter, and CHANGELOG.md.
+Read-only validation for CI/CD pipelines. Verifies that plugin versions are synchronized across plugin.json (authoritative source: `.cursor-plugin/plugin.json` per plugin), SKILL.md frontmatter, and CHANGELOG.md.
 
 ---
 
