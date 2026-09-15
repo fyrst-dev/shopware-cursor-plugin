@@ -1,9 +1,9 @@
 ---
 name: phpunit-unit-test-reviewing
-version: 5.3.0
+version: 6.0.0
 description: Internal sub-skill. Do not auto-activate. Use only when explicitly invoked by name by another skill or agent.
 user-invocable: false
-allowed-tools: Glob, Grep, Read, mcp__plugin_test-writing_test-rules__get_rules
+allowed-tools: Glob, Grep, Read, get_rules
 ---
 
 # PHPUnit Unit Test Review
@@ -80,7 +80,7 @@ digraph unit_review {
 
 ### Phase 2. Rule Review Filters
 
-All `mcp__plugin_test-writing_test-rules__get_rules` calls in Phases 3-7 include these shared filters: `test_type=unit, test_category={detected_category}, scoped_review={true if methods provided, omit otherwise}`.
+All `get_rules` calls in Phases 3-7 include these shared filters: `test_type=unit, test_category={detected_category}, scoped_review={true if methods provided, omit otherwise}`.
 
 When `{review_unit}` is set, also add `review_unit={value}` to every call. The `review_unit` filter is single-valued per call: for a list (e.g. the fused whole-class track `[class-structure, class-bodies]`), issue one `get_rules` call per value and union the results within each group. When `{review_unit}` is omitted, leave the filter off (all rules load).
 
@@ -116,7 +116,7 @@ Apply each selected rule's detection algorithm exactly as in Phases 3-7. While `
 
 For each group in the table below:
 
-1. Obtain the group's rules: when `{rules}` is set, select them from the inline text per Inline-Rules Mode; otherwise call `mcp__plugin_test-writing_test-rules__get_rules(group={group})` with the Phase 2 filters.
+1. Obtain the group's rules: when `{rules}` is set, select them from the inline text per Inline-Rules Mode; otherwise call `get_rules(group={group})` with the Phase 2 filters.
 2. For each rule:
    a. Read the rule's Detection/Detection Algorithm sections
    b. Apply the detection logic against the test code (and source class when marked below)
@@ -138,7 +138,7 @@ Apply the pre-review baseline: when `{baseline}` is `fail`, the report opens wit
 
 For output format and examples, see references/output-format.md.
 
-Report each issue using the rule's ID and title from `mcp__plugin_test-writing_test-rules__get_rules`:
+Report each issue using the rule's ID and title from `get_rules`:
 ```
 ### [{rule_id}] {title}
 ```
@@ -162,8 +162,8 @@ scope:
   mode: scoped | full
   methods: [method1, method2]  # only when mode=scoped
 errors:
-  - rule_id: {from mcp__plugin_test-writing_test-rules__get_rules response}
-    title: {from mcp__plugin_test-writing_test-rules__get_rules response}
+  - rule_id: {from get_rules response}
+    title: {from get_rules response}
     enforce: must-fix
     location: ClassTest.php:45
     method: testValidatesTotalAgainstThreshold   # the test method the finding is in; "class-level" for a whole-class or structural finding
@@ -175,8 +175,8 @@ errors:
     deleted_methods: []          # test methods this fix removes ENTIRELY, by bare name; [] when it removes none
     removed_assertions: []       # [{assertion, covered_by_test}] per assertion the fix removes
 warnings:
-  - rule_id: {from mcp__plugin_test-writing_test-rules__get_rules response}
-    title: {from mcp__plugin_test-writing_test-rules__get_rules response}
+  - rule_id: {from get_rules response}
+    title: {from get_rules response}
     enforce: should-fix
     location: ClassTest.php:78
     method: testCountsItems
@@ -190,8 +190,8 @@ warnings:
       - assertion: "static::assertSame(3, $result->count())"
         covered_by_test: testCountsItems      # the surviving test, or the literal "none — coverage lost"
 informational:
-  - rule_id: {from mcp__plugin_test-writing_test-rules__get_rules response}
-    title: {from mcp__plugin_test-writing_test-rules__get_rules response}
+  - rule_id: {from get_rules response}
+    title: {from get_rules response}
     enforce: consider
     location: ClassTest.php:96
     method: class-level
@@ -225,7 +225,7 @@ When a test class contains both unit and integration patterns:
 
 ### MCP Tool Unavailability
 
-If `mcp__plugin_test-writing_test-rules__get_rules` is unavailable:
+If `get_rules` is unavailable:
 - Report error: "test-rules MCP server not available — ensure the test-writing plugin is installed and Claude Code was restarted"
 - Do not fall back to hardcoded checks
 

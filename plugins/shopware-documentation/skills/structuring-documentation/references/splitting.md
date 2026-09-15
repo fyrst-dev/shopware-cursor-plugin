@@ -56,7 +56,7 @@ The repair for a stale scope sentence is writing a scope sentence, and the repai
 
 Search every tracked file, not only the Markdown ones the budget governs. PHP comments, YAML, shell scripts, and runtime error messages cite documentation paths too.
 
-Give any path sweep a known-positive fixture: a citation it must find. A regex written against text that is mostly backticks, punctuation, and slashes can be incapable of matching any real citation while returning the same empty output as a clean tree. `bash "${CLAUDE_SKILL_DIR}/scripts/measure.sh" links <changed directories>` fails loudly when it resolves nothing, for exactly this reason.
+Give any path sweep a known-positive fixture: a citation it must find. A regex written against text that is mostly backticks, punctuation, and slashes can be incapable of matching any real citation while returning the same empty output as a clean tree. `bash "${CURSOR_PLUGIN_ROOT}/scripts/measure.sh" links <changed directories>` fails loudly when it resolves nothing, for exactly this reason.
 
 ## What a split does not license
 

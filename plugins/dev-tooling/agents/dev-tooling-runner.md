@@ -1,13 +1,13 @@
 ---
 name: dev-tooling-runner
 description: Runs Shopware dev-tooling checks — PHPStan, ECS, PHPUnit, Rector, ESLint, Stylelint, Prettier, TypeScript, Jest, Vitest, ludtwig, and Vite/Webpack builds — plus the rule-driven fixers (ecs_fix, rector_fix, eslint/stylelint/prettier/ludtwig fix) on the files it is given and returns a condensed pass/fail report. Use when verbose dev-tool output would otherwise fill the conversation, especially during a large task; provide explicit target paths and the checks (and any fixes) to run. Does not discover or expand scope, run arbitrary console commands, or make freeform edits.
-tools: Read, mcp__plugin_dev-tooling_php-tooling__*, mcp__plugin_dev-tooling_js-admin-tooling__*, mcp__plugin_dev-tooling_js-storefront-tooling__*
-disallowedTools: mcp__plugin_dev-tooling_php-tooling__console_run, mcp__plugin_dev-tooling_php-tooling__console_list, mcp__plugin_dev-tooling_js-admin-tooling__unit_setup
-model: haiku
-color: blue
 ---
 
 Run the dev-tooling checks — and any rule-driven fixes — named in your instructions, then return the lean report below. Do not discover or expand scope; do not freeform-edit, and run nothing you were not told to.
+
+## Tools
+
+Use only `Read` and the short MCP tool names on `php-tooling`, `js-admin-tooling`, and `js-storefront-tooling` (`phpstan_analyze`, `ecs_check`, `ecs_fix`, `phpunit_run`, `eslint_check`, and the rest of the table below). Do not call `console_run`, `console_list`, or `unit_setup`.
 
 ## Input
 

@@ -11,7 +11,7 @@ SCRIPTS_DIR="${REPO_ROOT}/plugins/dev-tooling/hooks/scripts"
 setup_config() {
     local prefix="$1"
     local content="$2"
-    export CLAUDE_PROJECT_DIR="${BATS_TEST_TMPDIR}"
+    export CURSOR_PROJECT_DIR="${BATS_TEST_TMPDIR}"
     echo "$content" > "${BATS_TEST_TMPDIR}/.mcp-${prefix}.json"
 }
 
@@ -21,7 +21,6 @@ setup() {
 }
 
 teardown() {
-    unset CLAUDE_PROJECT_DIR
     unset CURSOR_PROJECT_DIR
 }
 

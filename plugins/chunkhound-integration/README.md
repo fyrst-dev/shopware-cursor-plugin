@@ -229,9 +229,9 @@ Check your `.chunkhound.json`:
 
 | Tool                                                           | Description                                                              |
 |----------------------------------------------------------------|--------------------------------------------------------------------------|
-| `mcp__plugin_chunkhound-integration_ChunkHound__code_research` | Deep code research for architecture, implementations, relationships      |
-| `mcp__plugin_chunkhound-integration_ChunkHound__search`        | Pinpoint exact locations via regex or semantic search (`type` parameter) |
-| `mcp__plugin_chunkhound-integration_ChunkHound__daemon_status` | Check daemon health, scan progress, and realtime indexing readiness      |
+| `code_research` | Deep code research for architecture, implementations, relationships      |
+| `search`        | Pinpoint exact locations via regex or semantic search (`type` parameter) |
+| `daemon_status` | Check daemon health, scan progress, and realtime indexing readiness      |
 
 ## 🎛️ Configuration Reference
 
@@ -250,7 +250,7 @@ The plugin sets `CHUNKHOUND_DB_EXECUTE_TIMEOUT=120` in the MCP server registrati
 > [!IMPORTANT]
 > ChunkHound serializes parallel MCP clients onto a single DuckDB writer connection inside its background daemon. Running multiple ChunkHound queries in parallel (for example, from several subagents at once) does not reduce wall-clock time — the calls queue at the daemon — and consumes extra agent spawn overhead and tokens. Prefer sequential invocations.
 
-The plugin enforces this opinion at runtime via a SessionStart hook that injects a directive instructing the model to dispatch any subagent performing ChunkHound operations sequentially. The directive applies to the bundled `code-researcher` agent and to any other subagent (general-purpose or custom) whose task involves `mcp__plugin_chunkhound-integration_ChunkHound__search` or `mcp__plugin_chunkhound-integration_ChunkHound__code_research`. Use sequential dispatch even when ad-hoc parallelism is technically possible.
+The plugin enforces this opinion at runtime via a SessionStart hook that injects a directive instructing the model to dispatch any subagent performing ChunkHound operations sequentially. The directive applies to the bundled `code-researcher` agent and to any other subagent (general-purpose or custom) whose task involves `search` or `code_research`. Use sequential dispatch even when ad-hoc parallelism is technically possible.
 
 ### Realtime backend
 

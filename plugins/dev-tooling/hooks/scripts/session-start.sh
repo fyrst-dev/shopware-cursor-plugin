@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# SessionStart hook: inject MCP dev tool usage directives + scopes metadata.
+# sessionStart hook: inject MCP dev tool usage directives + scopes metadata.
 set -euo pipefail
 
-# Claude Code and Cursor write hook-event JSON to stdin for every hook,
-# including SessionStart; drain it so the harness write cannot block on
-# a payload larger than the pipe buffer.
+# Cursor writes hook-event JSON to stdin; drain it so the harness write
+# cannot block on a payload larger than the pipe buffer.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
@@ -15,16 +14,16 @@ PROMPT_FILE="${HOOK_DIR}/prompts/mcp-tool-directives.md"
 
 _config_locations() {
     local prefix="$1"
-    printf '%s\n' ".claude/.mcp-${prefix}.json" ".cursor/.mcp-${prefix}.json" ".mcp-${prefix}.json"
+    printf '%s\n' ".cursor/.mcp-${prefix}.json" ".mcp-${prefix}.json"
 }
 
 is_enforced() {
     local config_prefix="$1"
-    [[ -z "${CLAUDE_PROJECT_DIR:-}" ]] && return 0
+    [[ -z "${PROJECT_DIR:-}" ]] && return 0
     local config_file="" location
     while IFS= read -r location; do
-        if [[ -f "${CLAUDE_PROJECT_DIR}/${location}" ]]; then
-            config_file="${CLAUDE_PROJECT_DIR}/${location}"
+        if [[ -f "${PROJECT_DIR}/${location}" ]]; then
+            config_file="${PROJECT_DIR}/${location}"
             break
         fi
     done < <(_config_locations "$config_prefix")
@@ -40,13 +39,13 @@ is_enforced() {
 # no scopes are present.
 _render_scopes_section() {
     local prefix="$1"
-    [[ -z "${CLAUDE_PROJECT_DIR:-}" ]] && return 0
+    [[ -z "${PROJECT_DIR:-}" ]] && return 0
     command -v jq &>/dev/null || return 0
 
     local config_file="" location
     while IFS= read -r location; do
-        if [[ -f "${CLAUDE_PROJECT_DIR}/${location}" ]]; then
-            config_file="${CLAUDE_PROJECT_DIR}/${location}"
+        if [[ -f "${PROJECT_DIR}/${location}" ]]; then
+            config_file="${PROJECT_DIR}/${location}"
             break
         fi
     done < <(_config_locations "$prefix")
@@ -90,5 +89,5 @@ done
 
 [[ -n "${scopes_block}" ]] && context+="${scopes_block}"
 
-emit_additional_context "SessionStart" "${context}"
+emit_additional_context "sessionStart" "${context}"
 exit 0

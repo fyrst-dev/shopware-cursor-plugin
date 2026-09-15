@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# SessionStart hook: inject directive to run ChunkHound operations
-# sequentially across subagents. Reads the static prompt from hooks/prompts/
-# and emits it as JSON additionalContext.
+# sessionStart hook: inject directive to run ChunkHound operations
+# sequentially across subagents.
 set -euo pipefail
 
-cat > /dev/null  # drain stdin
+# Drain stdin so the harness write cannot block on a large payload.
+cat > /dev/null
 
 HOOK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PROMPT_FILE="${HOOK_DIR}/prompts/sequential-chunkhound-directives.md"
@@ -16,10 +16,6 @@ json_context=$(printf '%s' "${context}" | jq -Rs '.')
 
 cat <<EOF
 {
-  "hookSpecificOutput": {
-    "hookEventName": "SessionStart",
-    "additionalContext": ${json_context}
-  },
   "additional_context": ${json_context}
 }
 EOF

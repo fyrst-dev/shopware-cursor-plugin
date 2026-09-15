@@ -1,6 +1,6 @@
 ---
 name: structuring-documentation
-version: 1.1.0
+version: 2.0.0
 description: Use when writing, editing, auditing, splitting, or measuring Markdown documentation surfaces — README.md, AGENTS.md, CLAUDE.md, and docs/ siblings. Triggers include "is this doc too long", "split this README", "measure the docs", "where does this documentation belong", "audit the documentation", and any request to check a documentation file against a size budget or repair its cross-references.
 license: MIT
 ---
@@ -72,16 +72,16 @@ digraph doc_surfaces {
 ## Measure
 
 ```
-bash "${CLAUDE_SKILL_DIR}/scripts/measure.sh" <size|links|all> [flags] PATH...
+bash "${CURSOR_PLUGIN_ROOT}/scripts/measure.sh" <size|links|all> [flags] PATH...
 ```
 
 ```
-bash "${CLAUDE_SKILL_DIR}/scripts/measure.sh" size <Module>/README.md <Module>/AGENTS.md
-bash "${CLAUDE_SKILL_DIR}/scripts/measure.sh" links --strict <Module>
-bash "${CLAUDE_SKILL_DIR}/scripts/measure.sh" all --goal 4000 <Module> <Module>/docs
+bash "${CURSOR_PLUGIN_ROOT}/scripts/measure.sh" size <Module>/README.md <Module>/AGENTS.md
+bash "${CURSOR_PLUGIN_ROOT}/scripts/measure.sh" links --strict <Module>
+bash "${CURSOR_PLUGIN_ROOT}/scripts/measure.sh" all --goal 4000 <Module> <Module>/docs
 ```
 
-`${CLAUDE_SKILL_DIR}` is this skill's own directory; on a host that does not define it, substitute the path to this skill's directory.
+`${CURSOR_PLUGIN_ROOT}` is this skill's own directory; on a host that does not define it, substitute the path to this skill's directory.
 
 `size` reports counted characters, raw characters, routing rows, and a verdict per surface. `links` resolves every relative Markdown cross-reference and its anchor from the citing file's own position — web and mail links (http, https, mailto) and non-`.md` targets are skipped by design — and reports every backticked bare `.md` path with whether it resolves.
 

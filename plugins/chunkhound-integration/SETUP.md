@@ -20,7 +20,7 @@
 
 ### .chunkhound.json
 - **Required**: Yes (ChunkHound needs to know which embedding provider to use)
-- **Location**: Project root. Also searched in: `.ai/`, `.aider/`, `.cursor/`, `.kite/`, `.llm/`, `.tabnine/`, `.claude/` (last found wins, `.claude/` has highest priority)
+- **Location**: Project root, or `.cursor/.chunkhound.json`. Prefer `.cursor/` when you want the file off the project root.
 
 **Do not set `indexing.realtime_backend`.** ChunkHound auto-selects the right backend per platform (`watchman` on Linux/Windows x86_64, `watchdog` on macOS). Forcing `realtime_backend: watchman` on macOS breaks startup — ChunkHound bundles Watchman binaries only for `linux/x86_64` and `windows/x86_64` and never falls back to a system `watchman` on `PATH`, so the daemon exits and the MCP server fails to connect (`MCP error -32000`).
 
@@ -36,7 +36,7 @@
 
 3. **Config location**: Where do you want to store the config file?
    - `.chunkhound.json` (project root, simplest)
-   - `.claude/.chunkhound.json` (Claude-specific, keeps project root clean)
+   - `.cursor/.chunkhound.json` (keeps the project root clean)
 
 #### Minimal Config
 
@@ -70,7 +70,7 @@
 - **Optional**: No
 - **Description**: All ChunkHound MCP tools — `code_research`, `search`, and `daemon_status`. Every tool is a read-only query against the local ChunkHound index with no remote side effects, so one allow covers the whole plugin.
 - **Patterns**:
-  - `mcp__plugin_chunkhound-integration_ChunkHound__*`
+  - `code_research`, `search`, `daemon_status`
 
 ## Validation
 
@@ -83,12 +83,12 @@ After config is created, the codebase must be indexed before semantic search wor
 - **Fail**: "No config found" (config file missing or in wrong location), "API key not set" (environment variable missing), connection errors (provider unreachable)
 
 ### Daemon Status
-- Use the `mcp__plugin_chunkhound-integration_ChunkHound__daemon_status` tool
+- Use the `daemon_status` tool
 - **Pass**: `status` is healthy, `query_ready` is true, and `scan_progress` indicates the initial scan completed
 - **Fail**: Connection error (chunkhound not installed or MCP server not running), `query_ready` false (scan still in progress or failed), or `status` indicates degraded state
 
 ## Post-Setup
 
-- Restart Claude Code after initial setup to load the ChunkHound MCP server.
+- Run **Developer: Reload Window** after initial setup to load the ChunkHound MCP server.
 - The `chunkhound index` command must complete before semantic search works. You can ask the `researching-code` skill to run pre-flight ("check if ChunkHound is healthy") for a health check at any time.
 - Re-index periodically as the codebase changes: `CHUNKHOUND_DB_EXECUTE_TIMEOUT=120 chunkhound index` (incremental, only processes changed files).

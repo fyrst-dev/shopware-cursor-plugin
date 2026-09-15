@@ -146,7 +146,7 @@ body:
       description: "Provide step-by-step instructions to reproduce the issue"
       placeholder: |
         1. Run `/plugin install [plugin-name]@shopware-ai-coding-tools`
-        2. Restart Claude Code (if required)
+        2. Reload Cursor (if required)
         3. Observe [error/unexpected behavior]
         4. Expected [correct behavior]
     validations:
@@ -213,7 +213,7 @@ body:
   - type: input
     id: claude-version
     attributes:
-      label: "Claude Code Version"
+      label: "Cursor Version"
       description: "Run `claude --version` and paste the output"
       placeholder: "e.g., 0.1.23"
     validations:

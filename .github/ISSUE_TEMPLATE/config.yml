@@ -5,10 +5,10 @@ contact_links:
     url: https://github.com/shopwareLabs/ai-coding-tools
     about: "Read plugin documentation, usage guides, and installation instructions"
 
-  - name: 🚀 Claude Code Documentation
-    url: https://docs.claude.com/en/docs/claude-code
-    about: "Official Claude Code documentation and getting started guide"
+  - name: 🚀 Cursor Plugins Documentation
+    url: https://cursor.com/docs/plugins
+    about: "Official Cursor plugins documentation and getting started guide"
 
-  - name: 🔧 Plugin Marketplace Guide
-    url: https://docs.claude.com/en/docs/claude-code/plugins
-    about: "Learn how to install and manage Claude Code plugins"
+  - name: 🔧 Cursor Plugin Reference
+    url: https://cursor.com/docs/reference/plugins
+    about: "Learn how to install and manage Cursor plugins"

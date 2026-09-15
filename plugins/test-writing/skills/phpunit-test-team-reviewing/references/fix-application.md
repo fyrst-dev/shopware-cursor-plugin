@@ -13,7 +13,7 @@ Before committing the fix diff, run a scoped self-review over it:
 
 - **Redundancy.** Apply DESIGN-003 (data-provider consolidation for 3+ similar variations) and DESIGN-004 (unjustified case/method redundancy) across every file the fix touches together, not only the file the finding named.
 - **Tautology.** For every test the fix adds, check that the assertion's expected value does not derive from the code under test or from the test's own fixture computation. An expected value computed the same way the SUT computes it passes on a broken SUT.
-- **Static gates.** Run PHPStan (`mcp__plugin_dev-tooling_php-tooling__phpstan_analyze`) and php-cs-fixer (`mcp__plugin_dev-tooling_php-tooling__ecs_check` / `ecs_fix`) over the fix diff — the same gates the reviewed code passes through.
+- **Static gates.** Run PHPStan (`phpstan_analyze`) and php-cs-fixer (`ecs_check` / `ecs_fix`) over the fix diff — the same gates the reviewed code passes through.
 
 ## Mutation Checks
 

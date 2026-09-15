@@ -22,10 +22,10 @@ Where does this documentation belong?
 ## 🗜️ Measurement Script
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/measure.sh" <size|links|all> [flags] PATH...
+bash "${CURSOR_PLUGIN_ROOT}/scripts/measure.sh" <size|links|all> [flags] PATH...
 ```
 
-`${CLAUDE_SKILL_DIR}` resolves to the installed skill's directory at runtime; when running the script by hand, substitute the path to `skills/structuring-documentation` yourself.
+`${CURSOR_PLUGIN_ROOT}` resolves to the installed skill's directory at runtime; when running the script by hand, substitute the path to `skills/structuring-documentation` yourself.
 
 | Mode    | Reports                                                                                                                                                                                                          |
 |---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

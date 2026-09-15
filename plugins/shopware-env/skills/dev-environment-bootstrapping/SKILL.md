@@ -1,9 +1,9 @@
 ---
 name: dev-environment-bootstrapping
-version: 1.4.0
+version: 2.0.0
 model: sonnet
 description: Use this skill when the user asks to bootstrap, set up, create, or initialize a Shopware development environment from scratch — phrases like "set up a Shopware dev environment", "clone and install Shopware", "initialize a Shopware plugin project", "bootstrap Shopware and a new plugin called X", "get a fresh Shopware instance running". Orchestrates the full first-run flow — detects the current state of a Shopware checkout, proposes a numbered action plan, confirms with the user, then executes dependency installation, database setup, plugin activation, and frontend builds via the lifecycle-tooling MCP server. Hands off to dev-tooling setup when the environment is running.
-allowed-tools: AskUserQuestion, Bash, Read, Glob, Write, mcp__plugin_shopware-env_lifecycle-tooling__install_dependencies, mcp__plugin_shopware-env_lifecycle-tooling__database_install, mcp__plugin_shopware-env_lifecycle-tooling__database_reset, mcp__plugin_shopware-env_lifecycle-tooling__testdb_prepare, mcp__plugin_shopware-env_lifecycle-tooling__frontend_build_admin, mcp__plugin_shopware-env_lifecycle-tooling__frontend_build_storefront, mcp__plugin_shopware-env_lifecycle-tooling__plugin_create, mcp__plugin_shopware-env_lifecycle-tooling__plugin_setup
+allowed-tools: Bash, Read, Glob, Write, install_dependencies, database_install, database_reset, testdb_prepare, frontend_build_admin, frontend_build_storefront, plugin_create, plugin_setup
 ---
 
 # Shopware Dev Environment Bootstrapping
@@ -81,7 +81,7 @@ Output a structured text summary to the user before asking anything. Format it a
 
 Omit any step that is already satisfied by the detection results. If everything is already set up, say so explicitly and propose no-op plan (nothing to do).
 
-## Phase 3 — Confirm via AskUserQuestion
+## Phase 3 — Confirm via ask the user
 
 Ask a single confirmation question. Use a multiSelect question with an Other text field:
 
@@ -137,7 +137,7 @@ If a git clone fails, report the error clearly, suggest the user clone manually,
 Call for first-run setup with all three flags true, unless the user's Other text field correction indicated otherwise:
 
 ```
-mcp__plugin_shopware-env_lifecycle-tooling__install_dependencies(
+install_dependencies(
   environment: <detected-or-user-corrected>,
   docker_service: <if applicable>,
   compose_file: <if applicable>,
@@ -154,7 +154,7 @@ If the user only corrected the environment type (not the install scope), keep al
 Call unless "Skip database setup" was selected:
 
 ```
-mcp__plugin_shopware-env_lifecycle-tooling__database_install(
+database_install(
   environment: <detected-or-user-corrected>,
   docker_service: <if applicable>,
   compose_file: <if applicable>
@@ -166,7 +166,7 @@ mcp__plugin_shopware-env_lifecycle-tooling__database_install(
 Call AFTER `database_install` — plugin_create requires a working database. Never reorder.
 
 ```
-mcp__plugin_shopware-env_lifecycle-tooling__plugin_create(
+plugin_create(
   plugin_name: <Name>,
   plugin_namespace: <Namespace>,
   environment: <detected-or-user-corrected>,
@@ -175,14 +175,14 @@ mcp__plugin_shopware-env_lifecycle-tooling__plugin_create(
 )
 ```
 
-If `plugin_name` or `plugin_namespace` were not determined during detection (e.g. the user mentioned creating a plugin but didn't specify them), ask via AskUserQuestion before calling this tool.
+If `plugin_name` or `plugin_namespace` were not determined during detection (e.g. the user mentioned creating a plugin but didn't specify them), ask via ask the user before calling this tool.
 
 **plugin_setup** (existing plugin user story only)
 
 Call unless "Skip plugin activation" was selected. For each plugin in `custom/plugins/`:
 
 ```
-mcp__plugin_shopware-env_lifecycle-tooling__plugin_setup(
+plugin_setup(
   plugin_name: <Name>,
   environment: <detected-or-user-corrected>,
   docker_service: <if applicable>,
@@ -195,7 +195,7 @@ mcp__plugin_shopware-env_lifecycle-tooling__plugin_setup(
 Call unless "Skip frontend builds" was selected:
 
 ```
-mcp__plugin_shopware-env_lifecycle-tooling__frontend_build_admin(
+frontend_build_admin(
   environment: <detected-or-user-corrected>,
   docker_service: <if applicable>,
   compose_file: <if applicable>
@@ -207,7 +207,7 @@ mcp__plugin_shopware-env_lifecycle-tooling__frontend_build_admin(
 Call unless "Skip frontend builds" was selected:
 
 ```
-mcp__plugin_shopware-env_lifecycle-tooling__frontend_build_storefront(
+frontend_build_storefront(
   environment: <detected-or-user-corrected>,
   docker_service: <if applicable>,
   compose_file: <if applicable>
@@ -272,7 +272,7 @@ Do NOT invoke any follow-up tools after this message. Do NOT call dev-tooling's 
 
 ## Rules
 
-- Ask one question at a time via AskUserQuestion. Phase 3 is the single confirmation point — do not ask additional questions except when `plugin_name` or `plugin_namespace` are genuinely unknown.
+- Ask one question at a time via ask the user. Phase 3 is the single confirmation point — do not ask additional questions except when `plugin_name` or `plugin_namespace` are genuinely unknown.
 - Never call `plugin_create` before `database_install`. The database must exist first.
 - Git clone operations are Bash-only. Never attempt to clone via MCP tools.
 - If `.mcp-php-tooling.json` is present, omit environment args from all MCP tool calls. The config file wins.

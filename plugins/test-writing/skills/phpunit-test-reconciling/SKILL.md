@@ -1,9 +1,9 @@
 ---
 name: phpunit-test-reconciling
-version: 5.3.0
+version: 6.0.0
 description: Internal sub-skill. Do not auto-activate. Use only when explicitly invoked by name by another skill or agent.
 user-invocable: false
-allowed-tools: Read, Glob, Grep, mcp__plugin_test-writing_test-rules__get_rules
+allowed-tools: Read, Glob, Grep, get_rules
 ---
 
 # PHPUnit Test Review Reconciling
@@ -54,7 +54,7 @@ Load references/reconciliation-rules.md. Apply it to every disposition in both m
 
 For each finding under contention:
 
-1. Load the detection algorithm: when `{rules}` is set, find the rule by ID in that inline text; otherwise call `mcp__plugin_test-writing_test-rules__get_rules(ids={rule_id})`.
+1. Load the detection algorithm: when `{rules}` is set, find the rule by ID in that inline text; otherwise call `get_rules(ids={rule_id})`.
 2. Apply the detection algorithm against the actual code at the cited location
 3. Decide the disposition on evidence alone (see mode sections below)
 
@@ -83,7 +83,7 @@ Output binding stance per file with an `adversary_impact` tag on every entry: `f
 
 ### MCP Tool Unavailability
 
-If `mcp__plugin_test-writing_test-rules__get_rules` is unavailable, detection algorithms cannot be verified.
+If `get_rules` is unavailable, detection algorithms cannot be verified.
 
 - Mode `peer`: concede peer findings you cannot verify; note the limitation in the stance.
 - Mode `adversary`: maintain your current positions; note the limitation in the stance.

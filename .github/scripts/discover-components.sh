@@ -204,16 +204,16 @@ discover_mcp_servers() {
   local servers=()
 
   while IFS= read -r -d '' file; do
-    # Extract plugin name from path: plugins/category/plugin-name/.mcp.json
+    # Extract plugin name from path: plugins/category/plugin-name/mcp.json
     local plugin_path
     plugin_path=$(dirname "$file")
     local plugin_name
     plugin_name=$(basename "$plugin_path")
 
-    # Extract server names from .mcp.json using jq.
+    # Extract server names from mcp.json using jq.
     # jq's status is read here rather than left to errexit: every caller runs
     # this function in a conditional or a subshell, both of which turn errexit
-    # off for its body, so a malformed .mcp.json would otherwise leave the
+    # off for its body, so a malformed mcp.json would otherwise leave the
     # caller with a short list it cannot tell apart from a complete one.
     # `// {}` keeps a file that legitimately declares no servers producing
     # nothing, so only unreadable JSON reaches the refusal.
@@ -228,7 +228,7 @@ discover_mcp_servers() {
         servers+=("$plugin_name / $server")
       fi
     done <<< "$server_names"
-  done < <(find "$REPO_ROOT/plugins" -type f -name ".mcp.json" -print0 2>/dev/null)
+  done < <(find "$REPO_ROOT/plugins" -type f -name "mcp.json" -print0 2>/dev/null)
 
   if [ ${#servers[@]} -gt 0 ]; then
     printf '%s\n' "${servers[@]}" | sort -u
@@ -251,7 +251,7 @@ discover_plugins_with_mcp() {
     local plugin_name
     plugin_name=$(basename "$plugin_path")
     plugins+=("$plugin_name")
-  done < <(find "$REPO_ROOT/plugins" -type f -name ".mcp.json" -print0 2>/dev/null)
+  done < <(find "$REPO_ROOT/plugins" -type f -name "mcp.json" -print0 2>/dev/null)
 
   if [ ${#plugins[@]} -gt 0 ]; then
     printf '%s\n' "${plugins[@]}" | sort -u

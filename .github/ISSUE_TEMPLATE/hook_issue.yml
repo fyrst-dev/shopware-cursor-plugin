@@ -11,7 +11,7 @@ body:
         **Before submitting:**
         - Search existing issues to avoid duplicates
         - Make sure you're using the latest plugin version
-        - Confirm you restarted Claude Code after installing the hook plugin
+        - Confirm you reloaded Cursor after installing the hook plugin
         - Have clear examples of the hook's behavior
 
   - type: checkboxes
@@ -23,7 +23,7 @@ body:
           required: true
         - label: "I am using the latest plugin version"
           required: true
-        - label: "I restarted Claude Code after installing/updating the plugin"
+        - label: "I reloaded Cursor after installing/updating the plugin"
           required: true
         - label: "I can provide clear examples showing the problem"
           required: true
@@ -99,7 +99,7 @@ body:
       description: "If using a script, paste the relevant code (or key excerpts)"
       placeholder: |
         #!/bin/bash
-        COMMAND=$(echo "$CLAUDE_TOOL_INPUT" | jq -r '.command // empty')
+        COMMAND=$(echo "$HOOK_INPUT" | jq -r '.command // empty')
         # Pattern matching logic...
       render: bash
 
@@ -107,7 +107,7 @@ body:
     id: tool-affected
     attributes:
       label: "Tool Being Intercepted"
-      description: "Which Claude Code tool does this hook intercept?"
+      description: "Which Cursor tool does this hook intercept?"
       options:
         - Bash
         - Read
@@ -236,7 +236,7 @@ body:
       description: "Provide step-by-step instructions to reproduce the issue"
       placeholder: |
         1. Install plugin with `/plugin install dev-tooling@shopware-ai-coding-tools`
-        2. Restart Claude Code
+        2. Reload Cursor
         3. Ask Claude to run [specific command]
         4. Observe [incorrect hook behavior]
         5. Expected [correct behavior]
@@ -323,7 +323,7 @@ body:
   - type: input
     id: claude-version
     attributes:
-      label: "Claude Code Version"
+      label: "Cursor Version"
       description: "Run `claude --version` and paste the output"
       placeholder: "e.g., 0.1.23"
     validations:

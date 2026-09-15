@@ -11,7 +11,7 @@ body:
         **Before submitting:**
         - Search existing issues to avoid duplicates
         - Make sure you're using the latest plugin version
-        - Confirm you restarted Claude Code after installing the MCP plugin
+        - Confirm you reloaded Cursor after installing the MCP plugin
         - Check that dependencies (jq, Node.js, etc.) are installed
 
   - type: checkboxes
@@ -23,7 +23,7 @@ body:
           required: true
         - label: "I am using the latest plugin version"
           required: true
-        - label: "I restarted Claude Code after installing/updating the plugin"
+        - label: "I reloaded Cursor after installing/updating the plugin"
           required: true
         - label: "I have verified dependencies are installed (jq, Node.js, etc.)"
           required: true
@@ -129,7 +129,7 @@ body:
       description: "What type of problem is this?"
       options:
         - Server not starting/loading
-        - Tool not available in Claude Code
+        - Tool not available in Cursor
         - Tool execution failed
         - Tool returned incorrect results
         - Configuration not recognized
@@ -206,7 +206,7 @@ body:
       placeholder: |
         1. Install plugin with `/plugin install dev-tooling@shopware-ai-coding-tools`
         2. Create config file `.mcp-php-tooling.json` with [settings]
-        3. Restart Claude Code
+        3. Reload Cursor
         4. Ask Claude to run PHPStan analysis
         5. Observe [incorrect behavior]
     validations:
@@ -231,7 +231,7 @@ body:
       label: "Server Logs/Debug Output"
       description: "Paste any MCP server logs or debug output"
       placeholder: |
-        Check MCP logs in Claude Code:
+        Check MCP logs in Cursor:
         - Developer Tools (if available)
         - stderr output from server
         - Any error messages
@@ -315,7 +315,7 @@ body:
   - type: input
     id: claude-version
     attributes:
-      label: "Claude Code Version"
+      label: "Cursor Version"
       description: "Run `claude --version` and paste the output"
       placeholder: "e.g., 0.1.23"
     validations:

@@ -93,7 +93,7 @@ Track which in-scope files were actually red-teamed. A file is covered if **≥ 
 
 | Scenario | Action |
 |---|---|
-| Workflow tool unavailable / cannot start | Inform the user the multi-agent review could not start; offer the single-reviewer skill (`phpunit-unit-test-writing`). |
+| Task tool unavailable / cannot start | Inform the user the multi-agent review could not start; offer the single-reviewer skill (`phpunit-unit-test-writing`). |
 | Run aborts on the fail-hard guard (empty manifest, missing field, over-budget projection) | This is the intended guard. Fix the manifest / shard the campaign and run again; never re-run on empty input. |
 | A single agent errors mid-flight | Not a run failure — see Mid-Run Agent Death (re-spawn that unit, never the whole fleet). |
 | A stage result carries `partial: true` (circuit breaker) | **Stop the campaign** — do not launch the next stage into a known-dead quota window. Report which stages completed (their persisted results stand) and which did not. |

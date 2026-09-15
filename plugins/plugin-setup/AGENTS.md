@@ -4,7 +4,7 @@
 
 ```
 plugins/plugin-setup/
-├── .claude-plugin/plugin.json    # Plugin metadata
+├── .cursor-plugin/plugin.json    # Plugin metadata
 ├── CHANGELOG.md                  # Version history
 ├── CLAUDE.md                     # Points to AGENTS.md
 ├── AGENTS.md                     # This file
@@ -42,7 +42,7 @@ When a fourth plugin gains a `SETUP.md`:
 ## Key Design Decisions
 
 - **Template-synced**: Each skill's `SKILL.md` body and `references/plugin-setup.md` are kept in sync via `.github/scripts/validate-template-sync.sh`. The authoritative mapping lives in `.claude/rules/template-sync.md` and the workflow step.
-- **Skill versions match the plugin-setup plugin version**, not the source plugin's version. The `validate-versions.sh` check expects each skill's `version` frontmatter to match `.claude-plugin/plugin.json`. Bump skills and `plugin.json` together when plugin-setup changes.
+- **Skill versions match the plugin-setup plugin version**, not the source plugin's version. The `validate-versions.sh` check expects each skill's `version` frontmatter to match `.cursor-plugin/plugin.json`. Bump skills and `plugin.json` together when plugin-setup changes.
 - **SETUP.md stays in the source plugin**, not in this plugin. The source plugin owns its setup procedure. This plugin only hosts the interactive skills that consume those guides.
 - **Plugin-specific descriptions** in each skill's frontmatter drive auto-routing. The body is identical, but the description must mention the source plugin name and likely user phrasing ("set up dev-tooling", "set up chunkhound-integration") so the right skill activates.
 - **No runtime components**. Only skills. No MCP server, no hooks, no commands, no agents. This keeps the plugin uninstallable after setup without disrupting other plugins.

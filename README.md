@@ -1,45 +1,30 @@
 # Shopware AI Coding Tools
 
-> **Experimental Community Project**: This repository is maintained by Shopware Labs and is not an official Shopware product. It is not affiliated with, endorsed by, or sponsored by Anthropic or any other AI provider. "Claude" and "Claude Code" are trademarks of Anthropic. This project is provided as-is without warranty.
+> **Experimental Community Project**: This repository is maintained as a Cursor plugin marketplace for Shopware development. It is not an official Shopware product.
 
-A [Claude Code](https://docs.claude.com/en/docs/claude-code/plugins) and [Cursor](https://cursor.com/docs/plugins) plugin marketplace for Shopware development. Provides development tools, test generation, code research, and more — the same plugin directories load in both clients.
+A [Cursor](https://cursor.com/docs/plugins) plugin marketplace for Shopware development. Provides development tools, test generation, code research, and more.
+
+This is **Cursor-only**. The historical Claude Code marketplace lives on the `upstream` branch. Do not install from `upstream` if you want these Cursor plugins.
 
 ## ⚡ Quick Start
 
-### Cursor
-
 **Requirements:** [Cursor](https://cursor.com) with plugin support.
 
-This fork ships `.cursor-plugin/marketplace.json` and a `.cursor-plugin/plugin.json` in every plugin. Import the repo as a Cursor team marketplace, or copy a plugin directory into `~/.cursor/plugins/local/` for local testing. Then install `dev-tooling`, `plugin-setup`, and any other plugins from **Customize**.
+This repo ships `.cursor-plugin/marketplace.json` and a `.cursor-plugin/plugin.json` in every plugin. Import the repo as a Cursor team marketplace (track **`main`**), or copy a plugin directory into `~/.cursor/plugins/local/` for local testing. Then install `dev-tooling`, `plugin-setup`, and any other plugins from **Customize**.
 
-👉 **See [docs/cursor-setup.md](./docs/cursor-setup.md) for install, MCP config, and what does not map 1:1 from Claude Code.**
-
-### Claude Code
-
-**Requirements:** [Claude Code](https://docs.claude.com/en/docs/claude-code) installed.
-
-Add the marketplace, then install the plugins you need:
-
-```bash
-/plugin marketplace add shopwareLabs/ai-coding-tools
-/plugin install dev-tooling@shopware-ai-coding-tools
-/plugin install plugin-setup@shopware-ai-coding-tools
-```
-
-Restart Claude Code after installing plugins that include MCP servers. Once setup is complete, you can uninstall `plugin-setup` to free up description budget (`/plugin uninstall plugin-setup@shopware-ai-coding-tools`).
+👉 **See [docs/cursor-setup.md](./docs/cursor-setup.md) for install, MCP config, and what does not exist as Cursor-only.**
 
 ## 🛠️ Recommended Setup
 
-These plugins work best alongside a few client tweaks. In Claude Code, turn on `ENABLE_TOOL_SEARCH=1` for deferred MCP tool loading. Add complementary marketplaces like Anthropic's `superpowers` and `it-bens/ai-tools` (for `llm-author` and `redundant-read-blocker`). Pre-approve common tools in `settings.json`.
+Install `dev-tooling` and `plugin-setup` first. Ask the agent to set up the plugin, then uninstall `plugin-setup`. Enable MCP servers under **Customize → MCP**. Project config stays `.mcp-php-tooling.json` / `.mcp-js-tooling.json` / `.chunkhound.json` (prefer `.cursor/` copies).
 
-👉 **Claude Code:** [docs/claude-code-setup.md](./docs/claude-code-setup.md)  
 👉 **Cursor:** [docs/cursor-setup.md](./docs/cursor-setup.md)
 
 ## 🧩 Available Plugins
 
 | Plugin                                                    | Description                                                                                                                              | Components                                          |
 |-----------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
-| [dev-tooling](#dev-tooling)                               | PHPStan, ECS, PHPUnit, ESLint, Stylelint, Jest, and more via MCP servers. Optional phpactor LSP.                                         | 🔌 MCP · 🪝 Hooks · 🎯 Skills · 🧠 LSP · 🤖 Agents  |
+| [dev-tooling](#dev-tooling)                               | PHPStan, ECS, PHPUnit, ESLint, Stylelint, Jest, and more via MCP servers.                                         | 🔌 MCP · 🪝 Hooks · 🎯 Skills · 🤖 Agents  |
 | [test-writing](#test-writing)                             | Automated PHPUnit test generation and validation for Shopware 6.                                                                         | 🎯 Skills · 🤖 Agents · 🔌 MCP                      |
 | [chunkhound-integration](#chunkhound-integration)         | Semantic code research using ChunkHound.                                                                                                 | 🔌 MCP · 🪝 Hooks · 🎯 Skills · 🤖 Agents           |
 | [ci-failure-interpretation](#ci-failure-interpretation)   | CI failure log interpretation for GitHub Actions workflows.                                                                              | 🎯 Skills                                           |
@@ -52,18 +37,12 @@ These plugins work best alongside a few client tweaks. In Claude Code, turn on `
 
 ### dev-tooling
 
-Three MCP servers for PHP and JavaScript operations plus an optional phpactor LSP for active PHP code discovery. Supports native, Docker, Docker Compose, Vagrant, and DDEV environments.
-
-```bash
-/plugin install dev-tooling@shopware-ai-coding-tools
-```
+Three MCP servers for PHP and JavaScript operations. Supports native, Docker, Docker Compose, Vagrant, and DDEV environments.
 
 - **PHP:** PHPStan static analysis, ECS code style, PHPUnit test runner with coverage gap analysis, Symfony Console, Rector
 - **Administration JS:** ESLint, Stylelint, Prettier, Jest, TypeScript, Vite builds
 - **Storefront JS:** ESLint, Stylelint, Jest, Webpack builds
-- **PHP LSP (optional):** document symbols, hover, go-to-definition, and references via [phpactor](https://github.com/phpactor/phpactor)
-
-After installing, also install `plugin-setup@shopware-ai-coding-tools`, then ask Claude to help you set up the plugin — the `dev-tooling-setting-up` skill walks you through configuration. Prerequisites: `jq`, restart after install. For LSP: `phpactor` binary available on the host (native) or inside the container (docker/docker-compose/vagrant/ddev).
+After installing, also install `plugin-setup`, then ask the agent to set up the plugin — the `dev-tooling-setting-up` skill walks you through configuration. Prerequisites: `jq`. Reload the window after install.
 
 See [full documentation](./plugins/dev-tooling/README.md) for configuration and tool reference.
 
@@ -71,28 +50,19 @@ See [full documentation](./plugins/dev-tooling/README.md) for configuration and 
 
 The GitHub CLI tooling has moved out of this marketplace into its own repository, [shopwareLabs/github-agent-tools](https://github.com/shopwareLabs/github-agent-tools), where it ships as the `github-mcp` plugin and is Codex-compatible. It is no longer distributed here.
 
-```bash
-/plugin marketplace add shopwareLabs/github-agent-tools
-/plugin install github-mcp@github-agent-tools
-```
-
-If you previously installed `gh-tooling` from this marketplace, Claude Code drops it on the next start (with a one-line removal notice) — install `github-mcp` from the new marketplace to keep GitHub tooling.
+If you previously installed `gh-tooling` from the old Claude marketplace, install `github-mcp` from the new marketplace to keep GitHub tooling.
 
 ### test-writing
 
-Generates and validates PHPUnit unit tests for Shopware 6. Analyzes source classes, detects the test category (DTO, Service, Flow/Event, DAL, Exception), generates tests, reviews them against the 43 rules of the Shopware unit-test catalog, and iterates fixes until they pass. Also supports team-based consensus review running as a multi-agent Claude Code Workflow (experimental) — one read-only reviewer for unit, integration, and migration tests, with cross-cutting coverage and integration-to-unit placement flags.
+Generates and validates PHPUnit unit tests for Shopware 6. Analyzes source classes, detects the test category (DTO, Service, Flow/Event, DAL, Exception), generates tests, reviews them against the 43 rules of the Shopware unit-test catalog, and iterates fixes until they pass. Also supports team-based consensus review as a Cursor Task campaign — one read-only reviewer for unit, integration, and migration tests, with cross-cutting coverage and integration-to-unit placement flags.
 
-```bash
-/plugin install test-writing@shopware-ai-coding-tools
-```
-
-Just ask Claude to generate tests — the skill activates automatically:
+Ask the agent to generate tests — the skill activates automatically:
 
 ```
 Generate unit tests for src/Core/Content/Product/ProductEntity.php
 ```
 
-Prerequisites: `dev-tooling` plugin installed, `.mcp-php-tooling.json` in project root, restart after install.
+Prerequisites: `dev-tooling` plugin installed, `.mcp-php-tooling.json` in the project (or `.cursor/`). Reload after install.
 
 See [full documentation](./plugins/test-writing/README.md) for categories, rules, and workflow details.
 
@@ -100,16 +70,12 @@ See [full documentation](./plugins/test-writing/README.md) for categories, rules
 
 Semantic code research using [ChunkHound's](https://chunkhound.github.io/) multi-hop search and LLM synthesis. Understands code architecture, traces data flows, and discovers component relationships.
 
-```bash
-/plugin install chunkhound-integration@shopware-ai-coding-tools
-```
-
 ```
 how does authentication work in this codebase?
 find all payment service dependencies
 ```
 
-After installing, also install `plugin-setup@shopware-ai-coding-tools`, then ask Claude to help you set up the plugin — the `chunkhound-integration-setting-up` skill guides you through ChunkHound installation, embedding provider configuration, and indexing. Restart after install.
+After installing, also install `plugin-setup`, then ask the agent to set up the plugin — the `chunkhound-integration-setting-up` skill guides you through ChunkHound installation, embedding provider configuration, and indexing. Reload after install.
 
 See [full documentation](./plugins/chunkhound-integration/README.md) for setup and configuration.
 
@@ -117,21 +83,13 @@ See [full documentation](./plugins/chunkhound-integration/README.md) for setup a
 
 Knowledge skill for interpreting CI failure logs from Shopware GitHub Actions workflows. Covers PHPUnit, PHPStan, ECS, ESLint, TypeScript, Stylelint, Prettier, Jest, Playwright, ludtwig, and Lighthouse.
 
-```bash
-/plugin install ci-failure-interpretation@shopware-ai-coding-tools
-```
-
-The skill activates automatically when analyzing CI failures — just ask Claude to interpret logs or debug a failed CI run. No prerequisites beyond installation.
+The skill activates automatically when analyzing CI failures — ask the agent to interpret logs or debug a failed CI run. No prerequisites beyond installation.
 
 See [full documentation](./plugins/ci-failure-interpretation/README.md) for supported tools and failure patterns.
 
 ### contributor-writing
 
 Writing skills for Shopware core contributors: Architecture Decision Records, PR descriptions, commit messages, and `RELEASE_INFO`/`UPGRADE` entries. Analyzes branch diffs, classifies changes, asks for context, and writes content calibrated to change magnitude.
-
-```bash
-/plugin install contributor-writing@shopware-ai-coding-tools
-```
 
 ```
 Write an ADR about switching to Redis for cart persistence
@@ -149,34 +107,24 @@ See [full documentation](./plugins/contributor-writing/README.md) for workflow d
 
 Two skills for analyzing GitHub pull requests and issues in depth. Each fetches the contribution data and researches its architectural context, producing a structured analysis covering scope, impact, and code relationships.
 
-```bash
-/plugin install code-contribution-analysis@shopware-ai-coding-tools
-```
-
 - **PR analysis:** metadata, diff, files, reviews, and inline comments fetched from GitHub; architectural impact researched via `chunkhound-integration` using an incremental (Stage 1/2/3) strategy
 - **Issue analysis:** metadata and comments fetched from GitHub; affected code area located and researched via `chunkhound-integration`
-- **Standalone and embeddable:** works in interactive Claude Code sessions and as a building block for Claude Agent SDK applications (e.g., automated briefing tools)
-
 Prerequisites: `chunkhound-integration` plugin installed and configured. The skills stop with an error if ChunkHound is not available at runtime. GitHub access (MCP server, `gh` CLI, or API) is fetched with whatever is available in the session — no specific tool required.
 
-Just ask Claude to analyze a PR or issue and the right skill activates:
+Ask the agent to analyze a PR or issue and the right skill activates:
 
 ```
 Analyze PR #4521 in shopware/shopware
 Analyze issue #8910 in shopware/shopware
 ```
 
-See [full documentation](./plugins/code-contribution-analysis/README.md) for details and Agent SDK integration examples.
+See [full documentation](./plugins/code-contribution-analysis/README.md) for details.
 
 ### shopware-env
 
 Bootstrap a Shopware development environment from scratch. Clone, install dependencies, set up the database, scaffold or activate plugins, and build frontends — via a single orchestrated skill that hands off to dev-tooling when done.
 
-```bash
-/plugin install shopware-env@shopware-ai-coding-tools
-```
-
-After installing, ask Claude to set up your environment:
+After installing, ask the agent to set up your environment:
 
 ```
 Set up a Shopware development environment
@@ -192,11 +140,7 @@ See [full documentation](./plugins/shopware-env/README.md) for tool reference an
 
 Technical migration skills for Shopware extensions — each skill covers one mechanical, machine-verified migration. The first skill, `xml-config-migrating`, migrates an extension's XML configuration to PHP before Shopware 6.8 removes XML support (Symfony 8 drops the XML loaders). Covers `services.xml`, `services_test.xml`, `routes*.xml`, and `packages/**/*.xml`; Shopware-specific formats like `config.xml` and `custom-fields.xml` are untouched.
 
-```bash
-/plugin install code-migration@shopware-ai-coding-tools
-```
-
-The skill activates when you ask to migrate plugin config to PHP or when the 6.7 deprecation `The XML configuration file "..." is deprecated and will not be loaded in v6.8.0.0` shows up. The migration is strict 1:1 and machine-verified. Claude dumps `debug:container` and `debug:router` per environment before and after the edit — `--env=<env>` on the command line, output captured to a file rather than read into the conversation — and three bundled scripts inventory the XML files, diff every dump pair and print the verification table, and check the migrated PHP for missing imports. You run your test suite, and the report carries the script's verdict. Requires a running Shopware 6.6+ installation with the extension active and a working `bin/console`, plus `jq`.
+The skill activates when you ask to migrate plugin config to PHP or when the 6.7 deprecation `The XML configuration file "..." is deprecated and will not be loaded in v6.8.0.0` shows up. The migration is strict 1:1 and machine-verified. The agent dumps `debug:container` and `debug:router` per environment before and after the edit — `--env=<env>` on the command line, output captured to a file rather than read into the conversation — and three bundled scripts inventory the XML files, diff every dump pair and print the verification table, and check the migrated PHP for missing imports. You run your test suite, and the report carries the script's verdict. Requires a running Shopware 6.6+ installation with the extension active and a working `bin/console`, plus `jq`.
 
 See [full documentation](./plugins/code-migration/README.md).
 
@@ -204,14 +148,10 @@ See [full documentation](./plugins/code-migration/README.md).
 
 Interactive setup skills for plugins that ship a `SETUP.md`. Install alongside a plugin that needs configuration, run setup, then uninstall to keep the description surface small.
 
-```bash
-/plugin install plugin-setup@shopware-ai-coding-tools
-```
-
 - **dev-tooling setup:** checks prerequisites, creates `.mcp-php-tooling.json` and `.mcp-js-tooling.json`, walks through scopes
 - **chunkhound-integration setup:** installs ChunkHound, configures embedding provider, runs initial index
 
-Ask Claude to set up the specific plugin you just installed:
+Ask the agent to set up the specific plugin you just installed:
 
 ```
 Help me set up dev-tooling
@@ -225,10 +165,6 @@ See [full documentation](./plugins/plugin-setup/README.md) for details.
 ### shopware-documentation
 
 Structuring skill for Markdown documentation surfaces: size budgets per file, one subject per surface, splitting oversized surfaces into `docs/` siblings, and cross-reference integrity. Ships a measurement script that reports counted characters and resolves every relative Markdown cross-reference (web and mail links [http, https, mailto] and non-`.md` targets are skipped by design).
-
-```bash
-/plugin install shopware-documentation@shopware-ai-coding-tools
-```
 
 ```
 Is this README too long?

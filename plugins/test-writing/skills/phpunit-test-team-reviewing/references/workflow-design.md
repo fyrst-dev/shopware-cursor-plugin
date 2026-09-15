@@ -1,6 +1,6 @@
 # Workflow Design — Adaptation Guide
 
-`workflow/team-review.workflow.mjs` is the shipped review workflow: a waved fan-out of fresh agents coordinated through a blackboard, no agent-to-agent messaging, with 2-of-3 consensus per unit. It reviews unit, integration, and migration tests over one mixed manifest, routing each file by `test_type`, and is **mode-switched** — the skill drives it as a campaign of sequential launches, each with a manifest `mode`:
+The team review is a Cursor `Task` campaign: a waved fan-out of fresh agents coordinated through a blackboard, no agent-to-agent messaging, with 2-of-3 consensus per unit. It reviews unit, integration, and migration tests over one mixed manifest, routing each file by `test_type`, and is **mode-switched** — the skill drives it as sequential Task launches, each with a manifest `mode`:
 
 | mode | runs | consumes | emits |
 |---|---|---|---|
@@ -8,9 +8,9 @@
 | `adversarial` | Wave 2 red team → Wave 3 defense → arbitration | manifest + catalogs + `consensus` (the persisted `adversarial_input` payloads) | final per-file verdicts + red-team metrics + candidate cross-file signals |
 | `signals` | cross-file consistency + changeset adoption signal | manifest only (no catalogs) | `consistency` + `adoption_opportunities` |
 
-One shard of files = one `review` launch; `signals` runs once over the whole changeset (it depends on nothing and may run concurrently with the first shard); `adversarial` runs once over all shards' persisted consensus, behind the campaign's gate. The SUT-coverage map and placement flags are deterministic joins the skill computes at merge time — they involve no agents and do not live in the script. Every mode asserts its own agent projection against `AGENT_BUDGET` before spawning anything: cached replays count toward the engine's 1000-agent lifetime cap, so an oversized run can never be rescued by resuming — it must be sharded before launch.
+One shard of files = one `review` launch; `signals` runs once over the whole changeset (it depends on nothing and may run concurrently with the first shard); `adversarial` runs once over all shards' persisted consensus, behind the campaign's gate. The SUT-coverage map and placement flags are deterministic joins the skill computes at merge time — they involve no agents. Every mode asserts its own agent projection against the shard budget before spawning anything. An oversized run must be sharded before launch.
 
-You already know how Claude Code workflows are built. This reference does **not** restate the script step by step — it covers only the inputs the workflow expects and its adaptation surface.
+This reference covers the inputs each mode expects and the adaptation surface. Spawn `test-reviewer` and `test-adversary` via Task; do not author a Workflow script.
 
 ## Pre-Run Collect
 

@@ -29,8 +29,8 @@ def skill_dir(tmp_path):
 
 @pytest.fixture
 def plugin_json_dir(skill_dir):
-    """Skill directory with a .claude-plugin/plugin.json in its parent."""
-    claude_plugin = skill_dir.parent / ".claude-plugin"
+    """Skill directory with a .cursor-plugin/plugin.json in its parent."""
+    claude_plugin = skill_dir.parent / ".cursor-plugin"
     claude_plugin.mkdir()
     (claude_plugin / "plugin.json").write_text(
         json.dumps(

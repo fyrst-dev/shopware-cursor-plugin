@@ -1,9 +1,9 @@
 ---
 name: commit-message-writing
-version: 1.7.0
+version: 2.0.0
 model: sonnet
 description: Use this skill when the user explicitly asks to generate, write, draft, or create a commit message, squash commit, commit title, or merge commit message for the Shopware core repository (shopware/shopware). Supports two modes — full commit messages (title + body) for branch commits, and squash merge titles (title-only) for trunk merges — the skill auto-detects which based on the current branch and PR target. Analyzes diffs, infers scope from Shopware's directory structure, and detects breaking changes. Do NOT activate during implementation work or when the user is still writing code; only when they are ready to capture a finished change. For commit messages in the ai-coding-tools marketplace repo itself, use the commit-message-generating skill instead.
-allowed-tools: Read, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Grep, Glob, Bash
 ---
 
 # Commit Message Generation
@@ -46,10 +46,10 @@ Analyze the diff to determine the commit type. Priority-ordered decision tree:
 10. Code restructuring without behavior change? -> `refactor`
 11. Otherwise -> `chore`
 
-When ambiguous (e.g., both `feat` and `fix` equally present), ask the user:
+When ambiguous (e.g., both `feat` and `fix` equally present):
 
 ```
-AskUserQuestion(
+ask the user(
   question="This branch contains both new functionality and bug fixes. Which type best represents the primary purpose?",
   options=[
     {label: "feat", description: "The main goal is new functionality"},

@@ -1,8 +1,6 @@
-# Recommended Cursor Setup
+# Cursor plugin setup
 
-This marketplace ships Cursor plugin manifests next to the existing Claude Code ones. The plugin directories are shared: skills, agents, MCP servers, and hook scripts live once and load from both clients.
-
-Nothing in this file is required to use the plugins, but the install path is different from Claude Code's `/plugin marketplace add`.
+This repository is a **Cursor-only** plugin marketplace. There is no Claude Code packaging and no dual runtime.
 
 ---
 
@@ -12,13 +10,15 @@ Nothing in this file is required to use the plugins, but the install path is dif
 
 1. Open the Cursor dashboard → **Plugins**.
 2. Under **Team Marketplaces**, choose **Add Marketplace** → **Import from Repo**.
-3. Point it at this repository (`fyrst-dev/shopware-cursor-plugin` or your fork) and the branch you want to track (`main` after merge).
+3. Point it at this repository (`fyrst-dev/shopware-cursor-plugin` or your fork) and track **`main`**.
 4. Confirm Cursor finds `.cursor-plugin/marketplace.json` and the ten plugin entries.
 5. Set marketplace access and, if you use the Cursor GitHub App, turn on **Auto Refresh**.
 
 Developers then install individual plugins from **Customize** in the sidebar.
 
-### Local development (before publishing)
+`upstream` is the preserved Claude Code marketplace history. Do not install from `upstream` if you want this Cursor plugin set.
+
+### Local development
 
 Cursor loads plugins from `~/.cursor/plugins/local/<plugin-name>/` when local plugin imports are allowed (Dashboard → Settings → Marketplace and Plugins on Teams/Enterprise).
 
@@ -37,7 +37,7 @@ Cursor skips a symlink whose target sits outside `~/.cursor/plugins/local`. Copy
 
 ## 2. Install the plugins you need
 
-From **Customize**, install the same plugins you would in Claude Code. A typical Shopware setup:
+From **Customize**, a typical Shopware setup:
 
 1. `dev-tooling` — PHP and JavaScript MCP tools
 2. `plugin-setup` — walk through `.mcp-php-tooling.json` / `.mcp-js-tooling.json` (uninstall after setup)
@@ -45,50 +45,51 @@ From **Customize**, install the same plugins you would in Claude Code. A typical
 4. `chunkhound-integration` — semantic research (run its setup skill)
 5. Any writing / env / migration plugins you actually use
 
-Enable each plugin's MCP servers under **Customize → MCP** (or Settings → Tools & MCP) after install. Cursor expands `${CLAUDE_PLUGIN_ROOT}` in `.mcp.json` to the plugin install path, so the existing server entrypoints keep working.
+Enable each plugin's MCP servers under **Customize → MCP** (or Settings → Tools & MCP) after install. Cursor expands `${CURSOR_PLUGIN_ROOT}` in `mcp.json` to the plugin install path.
 
-Project config files are unchanged:
+Project config files:
 
 | File | Used by |
 |------|---------|
 | `.mcp-php-tooling.json` | `dev-tooling` PHP server, `shopware-env` lifecycle tools |
 | `.mcp-js-tooling.json` | `dev-tooling` Administration and Storefront servers |
-| `.lsp-php-tooling.json` | phpactor LSP (**Claude Code only**) |
 | `.chunkhound.json` | `chunkhound-integration` |
 
-`plugin-setup` skills still create those MCP config files. Ask the agent to set up `dev-tooling` or `chunkhound-integration` after install.
+Prefer `.cursor/` copies of those files when you want them off the project root. `plugin-setup` skills create the MCP config files. Ask the agent to set up `dev-tooling` or `chunkhound-integration` after install.
 
 ---
 
-## 3. How components map
+## 3. Component layout
 
-| Claude Code | Cursor | Notes |
-|-------------|--------|--------|
-| `skills/*/SKILL.md` | Skills | Same files. Invoke with `/skill-name` or let the agent decide. |
-| `agents/*.md` | Custom agents | `name` / `description` load. Claude-only frontmatter (`tools`, `disallowedTools`, `permissionMode`, `model`, `color`, `skills`, `context: fork`) is ignored. |
-| `commands/` | Commands | This marketplace currently has none. |
-| `.mcp.json` | MCP servers | Cursor plugin.json points at `./.mcp.json`. |
-| `hooks/hooks.json` | `hooks/cursor-hooks.json` | Same scripts. Cursor uses `sessionStart`, `beforeShellExecution`, `postToolUse`. |
-| `.lsp.json` / phpactor | — | No Cursor plugin LSP equivalent. Use an editor PHP language server separately. |
-| Claude Workflows (`Workflow` tool) | — | `test-writing` team-review workflow does not run in Cursor. Single-reviewer skills still work. |
-| Claude Agent SDK | — | `code-contribution-analysis` skills still run in chat; SDK embedding is Claude-only. |
-
-Hook scripts accept both Claude (`tool_input.command`, `CLAUDE_PROJECT_DIR`) and Cursor (`command`, `CURSOR_PROJECT_DIR`, `workspace_roots`) payloads. SessionStart output includes both `hookSpecificOutput.additionalContext` and `additional_context`.
+| Path | Role |
+|------|------|
+| `.cursor-plugin/marketplace.json` | Marketplace registry |
+| `plugins/<name>/.cursor-plugin/plugin.json` | Plugin manifest |
+| `skills/*/SKILL.md` | Skills (short MCP tool names) |
+| `agents/*.md` | Custom agents (`name` + `description`; tool policy in the body) |
+| `commands/` | Commands — this marketplace currently has none |
+| `mcp.json` | MCP servers (`${CURSOR_PLUGIN_ROOT}`) |
+| `hooks/hooks.json` | Cursor hooks (`sessionStart`, `beforeShellExecution`, `postToolUse`) |
 
 `test-writing`'s `rules/` directory is the PHPUnit catalog served by MCP. The Cursor manifest sets `"rules": []` so those files are **not** loaded as always-on Cursor rules.
 
+Hook scripts read Cursor payloads (`.command` or `.tool_input.command`, `CURSOR_PROJECT_DIR`, `workspace_roots`) and emit `{ "additional_context": "..." }`. Shell enforcement denies with `{ "permission": "deny", ... }` and exit 2.
+
 ---
 
-## 4. MCP tool names in skills
+## 4. What cannot exist as Cursor-only
 
-Skills and agents still mention Claude Code MCP names such as `mcp__plugin_dev-tooling_php-tooling__phpstan_analyze`. Cursor surfaces the same servers (`php-tooling`, `js-admin-tooling`, …) under its own tool IDs.
-
-When a skill names a Claude-prefixed tool, call the matching Cursor MCP tool (`phpstan_analyze` on the `php-tooling` server, and so on). SessionStart directives already list the short tool names.
+| Removed Claude surface | Cursor substitute |
+|------------------------|-------------------|
+| Plugin LSP (`.lsp.json` / phpactor) | Use a normal editor PHP language server |
+| Claude Workflows (`Workflow`, `team-review.workflow.mjs`) | Team review uses Cursor `Task` plus the bash verify scripts |
+| Claude Agent SDK embedding | Chat skills only |
+| Agent frontmatter `tools` / `model` / `color` / `skills` | Documented in the agent body |
+| `${PLUGIN_DATA}` / `CURSOR_PLUGIN_DATA` | `CURSOR_PLUGIN_DATA` or `<workspace>/.cursor/test-writing` |
 
 ---
 
 ## 5. Related
 
-- [Claude Code setup](./claude-code-setup.md) — still valid if you also run Claude Code against this marketplace
 - [Cursor plugins reference](https://cursor.com/docs/reference/plugins)
 - [Cursor hooks](https://cursor.com/docs/hooks)

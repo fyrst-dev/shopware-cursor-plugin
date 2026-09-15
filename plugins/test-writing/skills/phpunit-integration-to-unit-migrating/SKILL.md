@@ -1,9 +1,9 @@
 ---
 name: phpunit-integration-to-unit-migrating
-version: 5.3.0
+version: 6.0.0
 description: Use this skill ONLY when the user explicitly requests an audit, migration, or evaluation of whether a Shopware integration test belongs in the unit suite — trigger phrases like "audit integration tests", "migrate integration tests to unit", "is this an integration test or a unit test", "evaluate integration tests for migration", "should this be a unit test instead". Audits tests under tests/integration/ for misplacement and migrates load-bearing-free tests to tests/unit/ using one of six codified refactoring patterns. NOT invoked automatically by reviewing skills — phpunit-integration-test-reviewing emits a placement smoke-alarm hint pointing here, but the user must invoke this skill explicitly to run the deep audit.
 user-invocable: true
-allowed-tools: Glob, Grep, Read, Edit, Write, AskUserQuestion, Bash, mcp__plugin_test-writing_test-rules__get_rules
+allowed-tools: Glob, Grep, Read, Edit, Write, Bash, get_rules
 ---
 
 # PHPUnit Integration-to-Unit Migration
@@ -62,7 +62,7 @@ digraph migration_audit {
    - Single test file path: `tests/integration/Core/.../SomeTest.php`
    - Directory: `tests/integration/Core/Framework/App/Cms/`
    - Branch / PR / commit range: resolve to the list of integration test files touched
-2. List the integration test files in scope. If > 20, ask the user to narrow the scope or proceed in batches.
+2. List the integration test files in scope. If > 20 to narrow the scope or proceed in batches.
 3. Read each file's `#[CoversClass]` and constructor of the SUT class(es) to ground later deliberation.
 
 ### Phase 2: SUT contract articulation (REQUIRED gate)
@@ -80,8 +80,8 @@ This step is not optional. Without an articulated contract, the rules below coll
 
 ### Phase 3: Load placement rules
 
-1. Call `mcp__plugin_test-writing_test-rules__get_rules(group=placement)` to load PLACEMENT-001..008
-2. Also call `mcp__plugin_test-writing_test-rules__get_rules(group=integration, test_type=integration)` to have quality rules available — INTEGRATION-002 mock detection informs PLACEMENT-005's collaborator-graph reasoning, and INTEGRATION-008's assertion-shape catalog is referenced by PLACEMENT-004.
+1. Call `get_rules(group=placement)` to load PLACEMENT-001..008
+2. Also call `get_rules(group=integration, test_type=integration)` to have quality rules available — INTEGRATION-002 mock detection informs PLACEMENT-005's collaborator-graph reasoning, and INTEGRATION-008's assertion-shape catalog is referenced by PLACEMENT-004.
 
 ### Phase 4: Apply placement rules
 
@@ -96,7 +96,7 @@ For each test method in each file:
 
 ### Phase 5: Bucket report + user confirmation gate
 
-Present the buckets to the user via the report format in `references/output-format.md`. Then call `AskUserQuestion` to confirm which buckets to execute:
+Present the buckets to the user via the report format in `references/output-format.md`. Then call `ask the user` to confirm which buckets to execute:
 
 - Confirm the `migrate` set (default: all)
 - Confirm the `split` set (default: all)
@@ -172,7 +172,7 @@ status: AUDITED | MIGRATED | DECLINED | FAILED
 
 ### MCP Tool Unavailability
 
-If `mcp__plugin_test-writing_test-rules__get_rules` is unavailable, abort with: "test-rules MCP server not available — ensure the test-writing plugin is installed and Claude Code was restarted." Do not attempt the audit from memory; the rules are the load-bearing reasoning prompts.
+If `get_rules` is unavailable, abort with: "test-rules MCP server not available — ensure the test-writing plugin is installed and Claude Code was restarted." Do not attempt the audit from memory; the rules are the load-bearing reasoning prompts.
 
 ### SUT Contract Unclear
 
@@ -180,7 +180,7 @@ If the SUT contract cannot be articulated in one sentence (the test does too man
 
 ### Scope Too Large
 
-If > 20 integration test files are in scope, ask the user via `AskUserQuestion` whether to narrow scope or proceed in batches. Batch by directory or `#[CoversClass]` namespace.
+If > 20 integration test files are in scope via `ask the user` whether to narrow scope or proceed in batches. Batch by directory or `#[CoversClass]` namespace.
 
 ### Refactoring Pattern Missing
 

@@ -6,7 +6,7 @@ The same track logic applies to every `test_type`: unit, integration, and migrat
 
 Fixed seeds (every preset): `T=450`, `U_file=18`, `SLOTS=3` (`T` is a **test+source combined** line count). `T` is a reviewability threshold and `SLOTS` is the 2-of-3 consensus invariant — neither is a preset knob.
 
-Preset seeds — the cost/quality operating point, selected by name in the manifest (`preset`), defined in `team-review.workflow.mjs` `PRESETS`, fail-soft to `standard`:
+Preset seeds — the cost/quality operating point, selected by name in the manifest (`preset`), defined in the table below, fail-soft to `standard`:
 
 | preset | C | M | lenses (= K_adv) | arbMax | arbFile |
 |---|---|---|---|---|---|
@@ -59,7 +59,7 @@ digraph track_decision {
 
 ## Shard Budget (campaign partition)
 
-The skill partitions the manifest into review shards **before** any launch; each shard is one `mode=review` workflow run.
+The skill partitions the manifest into review shards **before** any launch; each shard is one `mode=review` Task campaign.
 
 - **S_max = 250** — the per-shard ceiling on the projected review-mode agent bound. Rationale: measured lean shards of this size ran 161–182 actual agents in ~75 minutes — inside one usage-limit window — and 250 leaves ~4× headroom under the engine's 1000-agent lifetime cap, so even a resume that replays the whole shard plus a full tail re-run cannot reach it.
 - **Per-file weight** — from the dry-run projection's `per_file`: `weight = units × SLOTS × 3 + lenses` (the file's share of `review_agents_bound`).

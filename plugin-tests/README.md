@@ -60,8 +60,6 @@ plugin-tests/
 │   ├── php_tools.bats                  # PHP hook blocking
 │   ├── js_admin_tools.bats            # Admin JS hook blocking
 │   ├── js_storefront_tools.bats       # Storefront JS hook blocking
-│   ├── lsp_bootstrap.bats             # LSP bootstrap: null stub, direct exec or python proxy
-│   ├── lsp_null.bats                  # The minimal LSP stub used when an LSP is disabled
 │   ├── mcp_tool_console.bats          # Console tool tests
 │   ├── mcp_tool_ecs.bats             # ECS tool tests
 │   ├── mcp_tool_js_admin.bats        # Admin JS MCP tool tests
@@ -76,7 +74,6 @@ plugin-tests/
 │   ├── scope_resolution.bats          # Scope declaration, validation and refusal
 │   ├── scope_session_start.bats       # Scope reporting from the session-start hook
 │   ├── session_start.bats             # Session-start hook JSON output
-│   ├── lsp_proxy/                     # pytest suite for shared/lsp_proxy.py
 │   ├── fixtures/
 │   │   └── coverage/                  # XML fixtures for coverage gap tests
 │   │       ├── two_files.xml          # Two files with partial coverage
@@ -94,7 +91,6 @@ plugin-tests/
 │       └── common_setup.bash
 ├── test-writing/
 │   ├── build_rule_package.bats
-│   ├── build-run-script.bats
 │   ├── review_unit.bats
 │   ├── selection_equivalence.bats
 │   ├── validate_review_unit_script.bats

@@ -1,9 +1,9 @@
 ---
 name: pr-description-writing
-version: 1.7.0
+version: 2.0.0
 model: sonnet
 description: Use this skill when the user asks to write, draft, create, or improve a PR description, is about to create a PR, or mentions "PR description", "pull request description", or "PR template" — AND that PR targets trunk in the Shopware core repository (shopware/shopware). The skill detects the target and only activates for trunk-targeting PRs; for PRs targeting a feature branch, use feature-branch-pr-writing instead. Do NOT activate mid-implementation — only when the user is ready to describe finished changes. Produces a conventional-commit title and a description following Shopware's 5-section template, leveraging the full branch diff against trunk and session context.
-allowed-tools: Read, Grep, Glob, Bash, AskUserQuestion
+allowed-tools: Read, Grep, Glob, Bash
 ---
 
 # PR Description Drafting

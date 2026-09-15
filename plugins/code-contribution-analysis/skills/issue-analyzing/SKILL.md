@@ -1,6 +1,6 @@
 ---
 name: issue-analyzing
-version: 1.1.0
+version: 2.0.0
 description: Use this skill when the user asks to analyze a specific GitHub issue, understand what area of code an issue affects, assess an issue's scope, or research the code context around an issue — example triggers like "analyze issue #8910", "what's the scope of this issue?", "research the code affected by issue 8910", "what part of the code does this issue touch", "is this issue still relevant". Activate any time the user references a specific GitHub issue number and wants to understand its scope or affected code, even when they do not explicitly say "analyze". Fetches issue metadata and comments from GitHub, then researches the affected code area via the chunkhound-integration code_research tool. Accepts an optional triage reasoning context from callers. Do NOT activate for generic code questions that do not reference a specific issue.
 ---
 
@@ -12,7 +12,7 @@ Do not activate for generic code questions that do not reference a specific issu
 
 ## Prerequisites
 
-Requires the **chunkhound-integration** companion plugin. The skill calls `mcp__plugin_chunkhound-integration_ChunkHound__code_research` at Step 3 and stops with an error if that tool is not callable — see [Errors](#errors).
+Requires the **chunkhound-integration** companion plugin. The skill calls `code_research` at Step 3 and stops with an error if that tool is not callable — see [Errors](#errors).
 
 Issue data is fetched from GitHub using whatever access the session has available (a GitHub MCP server, the `gh` CLI, or direct API calls).
 
@@ -44,7 +44,7 @@ If the issue is a feature request, the "affected area" is the area that would ne
 
 ### Step 3 — Research the affected area
 
-Use `mcp__plugin_chunkhound-integration_ChunkHound__code_research` with an **incremental strategy** — the same pattern as `pr-analyzing`, adapted for issues.
+Use `code_research` with an **incremental strategy** — the same pattern as `pr-analyzing`, adapted for issues.
 
 **Stage 1 — Locate components.** Run focused `code_research` queries to locate the components or areas referenced in the issue. Goal: find the concrete code that maps to the issue's problem space.
 
@@ -96,4 +96,4 @@ Return these sections in order:
 
 **GitHub data unavailable.** If issue data cannot be fetched at Step 1 — no GitHub access is configured, the issue is not found, or access is denied — stop and report the error to the user. Do not attempt analysis without issue data.
 
-**chunkhound-integration unavailable.** If `mcp__plugin_chunkhound-integration_ChunkHound__code_research` is not callable at Step 3, stop and report to the user that the skill requires chunkhound-integration for code research. Do not produce partial analysis from GitHub data alone — code context is the substance of issue analysis, and keyword-only output would look like a complete result but silently omit the most valuable section.
+**chunkhound-integration unavailable.** If `code_research` is not callable at Step 3, stop and report to the user that the skill requires chunkhound-integration for code research. Do not produce partial analysis from GitHub data alone — code context is the substance of issue analysis, and keyword-only output would look like a complete result but silently omit the most valuable section.

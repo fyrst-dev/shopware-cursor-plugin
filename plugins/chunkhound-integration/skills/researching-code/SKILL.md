@@ -1,15 +1,15 @@
 ---
 name: researching-code
-version: 3.5.0
+version: 4.0.0
 description: Use this skill when the user asks an architectural or semantic question about a codebase — phrases like "how does X work?", "what's the architecture?", "help me understand this codebase", "find all components that use Y", "trace the data flow from A to B", "where is feature Z handled", "I'm new to this code, where do I start" — or whenever they mention design patterns, component relationships, multi-file dependency tracing, or onboarding to unfamiliar code. Activate even when the user does not explicitly mention "semantic search" or "ChunkHound".
 allowed-tools:
   - Read
   - Bash(bfs:*)
   - Bash(ugrep:*)
   - Bash(bash:*)
-  - mcp__plugin_chunkhound-integration_ChunkHound__daemon_status
-  - mcp__plugin_chunkhound-integration_ChunkHound__code_research
-  - mcp__plugin_chunkhound-integration_ChunkHound__search
+  - daemon_status
+  - code_research
+  - search
 ---
 
 # Researching Code
@@ -84,7 +84,7 @@ For each query in the plan, pick a primitive. A ChunkHound primitive opens every
 - **Design pattern, cross-file flow, or unknown vocabulary** → `code_research` — multi-file synthesis is the deliverable
 - **Known file by path** → `Read` — this is not a search
 - **Known file pattern** (all `*.test.ts`, every `Migration*.php`) → `bfs` via Bash — this enumerates paths, not code; no ChunkHound primitive searches paths, so nothing has to precede it
-- **Exhaustive enumeration after a ChunkHound query has located the surface** (confirming every call site of a symbol slated for refactoring) → the bundled sweep script via Bash: `bash "${CLAUDE_SKILL_DIR}/scripts/sweep.sh" [-n] [-g GLOB] PATTERN PATH...` — patterns are ERE (alternation is `a|b`, never `a\|b`); it emits the matches and a closing `count:` line, and that tool-computed count is the only count that enters the findings — never one tallied by reading the listing. `${CLAUDE_SKILL_DIR}` is this skill's own directory; on a host that does not define it, substitute the path to this skill's directory.
+- **Exhaustive enumeration after a ChunkHound query has located the surface** (confirming every call site of a symbol slated for refactoring) → the bundled sweep script via Bash: `bash "${CURSOR_PLUGIN_ROOT}/scripts/sweep.sh" [-n] [-g GLOB] PATTERN PATH...` — patterns are ERE (alternation is `a|b`, never `a\|b`); it emits the matches and a closing `count:` line, and that tool-computed count is the only count that enters the findings — never one tallied by reading the listing. `${CURSOR_PLUGIN_ROOT}` is this skill's own directory; on a host that does not define it, substitute the path to this skill's directory.
 - **Documentation content (Markdown)** → `bfs` to locate, `Read` to consume — governed by the `Documentation scope` rule below; never evidence on its own
 
 **Prefer semantic over regex.** Regex matches the token you guessed; semantic matches the code you meant. Choose regex only when the deliverable is occurrences of a string you already know exactly. Knowing a symbol's name is not sufficient grounds for regex — if the question is about what that symbol relates to, it is a semantic question.

@@ -4,7 +4,7 @@
 
 ```
 plugins/ci-failure-interpretation/
-├── .claude-plugin/
+├── .cursor-plugin/
 │   └── plugin.json
 ├── skills/
 │   └── ci-log-interpretation/

@@ -4,7 +4,7 @@
 #
 # Synchronizes plugin versions from plugin.json (authoritative source)
 # to all other locations: SKILL.md frontmatter and CHANGELOG.md.
-# Authoritative source: Each plugin's .claude-plugin/plugin.json
+# Authoritative source: Each plugin's .cursor-plugin/plugin.json
 #
 # Usage:
 #   ./update-versions.sh [--dry-run] [--plugin <name>]
@@ -26,7 +26,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 export REPO_ROOT
-export MARKETPLACE_JSON="$REPO_ROOT/.claude-plugin/marketplace.json"
+export MARKETPLACE_JSON="$REPO_ROOT/.cursor-plugin/marketplace.json"
 
 # Source libraries
 # shellcheck source=./lib/common.sh
@@ -152,12 +152,12 @@ update_plugin_versions() {
 
   log_info "Processing plugin: $plugin_name"
 
-  # Get authoritative version from plugin's .claude-plugin/plugin.json
+  # Get authoritative version from plugin's .cursor-plugin/plugin.json
   local plugin_version
   plugin_version=$(extract_plugin_version "$plugin_name")
 
   if [ -z "$plugin_version" ]; then
-    log_error "Plugin '$plugin_name' not found or missing .claude-plugin/plugin.json"
+    log_error "Plugin '$plugin_name' not found or missing .cursor-plugin/plugin.json"
     return 1
   fi
 

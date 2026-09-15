@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # build_rule_package tool for test-rules MCP server
 
-# Render a rule catalog to a file in Claude Code plugin storage and return its
+# Render a rule catalog to a file in Cursor plugin storage and return its
 # absolute path. Review agents read that file instead of fetching rules per
 # agent.
 #
@@ -24,7 +24,8 @@
 # composition builds coexist as distinct paths; the unscoped unit catalog keeps
 # the canonical unit-review.md name.
 # Globals:
-#   CLAUDE_PLUGIN_DATA - plugin storage root; required, no fallback.
+#   CURSOR_PLUGIN_DATA - plugin storage root. When unset, defaults to
+#   ${CURSOR_PROJECT_DIR:-$PWD}/.cursor/test-writing.
 # Arguments:
 #   JSON arguments object (optional; a bare call defaults to "{}"): test_type
 #   selects the composed catalog, group narrows to a single rule group;
@@ -34,7 +35,7 @@
 #   On success: `path:`, `bytes:`, `rules:`, `groups:` lines on stdout. On
 #   failure: an `Error: ...` message on stdout.
 # Returns:
-#   0 on a written package; 1 when CLAUDE_PLUGIN_DATA is unset, the test type
+#   0 on a written package; 1 when plugin storage cannot be resolved, the test type
 #   has no composed catalog, the filtered rule set is empty, or the storage
 #   directory/file write fails.
 tool_build_rule_package() {
@@ -90,11 +91,11 @@ tool_build_rule_package() {
         done <<< "${groups_raw}"
     fi
 
-    # Fail hard on unset storage. No fallback to /tmp or CLAUDE_PLUGIN_ROOT — a
-    # silent fallback would write the catalog where agents cannot find it.
-    if [[ -z "${CLAUDE_PLUGIN_DATA:-}" ]]; then
-        printf 'Error: CLAUDE_PLUGIN_DATA is not set; the test-rules MCP server cannot locate plugin storage.\n'
-        return 1
+    # Prefer an explicit CURSOR_PLUGIN_DATA; otherwise write under the workspace.
+    # Cursor does not provide a plugin-private data directory.
+    local plugin_data="${CURSOR_PLUGIN_DATA:-}"
+    if [[ -z "${plugin_data}" ]]; then
+        plugin_data="${CURSOR_PROJECT_DIR:-${PROJECT_ROOT:-$PWD}}/.cursor/test-writing"
     fi
 
     # Build the ordered union of rule IDs: each group in render order, rules
@@ -159,7 +160,7 @@ tool_build_rule_package() {
     local target_name="unit-review${key}.md"
 
     # Atomic write to plugin storage (mirrors redundant-read-blocker save_tracker).
-    local dir="${CLAUDE_PLUGIN_DATA}/rule-packages"
+    local dir="${plugin_data}/rule-packages"
     local target="${dir}/${target_name}"
     if ! mkdir -p "${dir}"; then
         printf 'Error: build_rule_package could not create the storage directory: %s\n' "${dir}"

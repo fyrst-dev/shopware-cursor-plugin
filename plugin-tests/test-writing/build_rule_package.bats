@@ -18,7 +18,7 @@ setup() {
 
     # Each test gets its own plugin-storage root; tests that exercise the unset
     # or write-failure guards override it locally.
-    export CLAUDE_PLUGIN_DATA="${BATS_TEST_TMPDIR}/plugindata"
+    export CURSOR_PLUGIN_DATA="${BATS_TEST_TMPDIR}/plugindata"
 }
 
 # Extract the `path:` value from a build_rule_package response in $output.
@@ -152,12 +152,14 @@ _unit_review_rules_on_disk() {
 # §7.3 Fail-hard guards — no silent fallback
 # ============================================================================
 
-@test "build_rule_package fails hard when CLAUDE_PLUGIN_DATA is unset" {
+@test "build_rule_package writes under workspace .cursor/test-writing when CURSOR_PLUGIN_DATA is unset" {
     _build_rule_index "${RULES_DIR}"
-    unset CLAUDE_PLUGIN_DATA
+    unset CURSOR_PLUGIN_DATA
+    export CURSOR_PROJECT_DIR="${BATS_TEST_TMPDIR}/workspace"
+    mkdir -p "${CURSOR_PROJECT_DIR}"
     run tool_build_rule_package
-    assert_failure
-    assert_output --partial "CLAUDE_PLUGIN_DATA is not set"
+    assert_success
+    assert_output --partial "path: ${CURSOR_PROJECT_DIR}/.cursor/test-writing/rule-packages/"
 }
 
 @test "build_rule_package fails hard when zero rules render" {
@@ -168,7 +170,7 @@ _unit_review_rules_on_disk() {
     assert_failure
     assert_output --partial "rendered zero rules"
     # No file may be written on the zero-rules path.
-    assert [ ! -e "${CLAUDE_PLUGIN_DATA}/rule-packages/unit-review.md" ]
+    assert [ ! -e "${CURSOR_PLUGIN_DATA}/rule-packages/unit-review.md" ]
 }
 
 @test "build_rule_package fails hard when the storage directory cannot be created" {
@@ -176,7 +178,7 @@ _unit_review_rules_on_disk() {
     # Point storage at a regular file so mkdir -p of its child fails (ENOTDIR).
     local blocker="${BATS_TEST_TMPDIR}/blocker"
     touch "${blocker}"
-    export CLAUDE_PLUGIN_DATA="${blocker}"
+    export CURSOR_PLUGIN_DATA="${blocker}"
     run tool_build_rule_package
     assert_failure
     assert_output --partial "could not create the storage directory"
@@ -199,7 +201,7 @@ _unit_review_rules_on_disk() {
     assert_output --partial "# PROVIDER-005 "
 
     # No partial temp file left behind in the storage directory.
-    run bash -c 'set -- "$1"/rule-packages/.unit-review.*; [ -e "$1" ] && echo LEFTOVER || echo CLEAN' _ "${CLAUDE_PLUGIN_DATA}"
+    run bash -c 'set -- "$1"/rule-packages/.unit-review.*; [ -e "$1" ] && echo LEFTOVER || echo CLEAN' _ "${CURSOR_PLUGIN_DATA}"
     assert_output "CLEAN"
 }
 
@@ -217,7 +219,7 @@ _unit_review_rules_on_disk() {
     second="$(cat "${pkg}")"
     assert_equal "${second}" "${first}"
 
-    run bash -c 'set -- "$1"/rule-packages/.unit-review.*; [ -e "$1" ] && echo LEFTOVER || echo CLEAN' _ "${CLAUDE_PLUGIN_DATA}"
+    run bash -c 'set -- "$1"/rule-packages/.unit-review.*; [ -e "$1" ] && echo LEFTOVER || echo CLEAN' _ "${CURSOR_PLUGIN_DATA}"
     assert_output "CLEAN"
 }
 
@@ -336,7 +338,7 @@ _scoped_render() {
     run tool_build_rule_package '{}'
     assert_success
 
-    local base="${CLAUDE_PLUGIN_DATA}/rule-packages"
+    local base="${CURSOR_PLUGIN_DATA}/rule-packages"
     assert [ -f "${base}/unit-review-ru-method.md" ]
     assert [ -f "${base}/unit-review-ru-class-structure.md" ]
     assert [ -f "${base}/unit-review.md" ]
@@ -352,7 +354,7 @@ _scoped_render() {
     assert_failure
     assert_output --partial "rendered zero rules"
     assert_output --partial "matched nothing"
-    assert [ ! -e "${CLAUDE_PLUGIN_DATA}/rule-packages/unit-review-ru-class-structure.md" ]
+    assert [ ! -e "${CURSOR_PLUGIN_DATA}/rule-packages/unit-review-ru-class-structure.md" ]
 }
 
 # ============================================================================
@@ -488,7 +490,7 @@ _catalog_ids() {
     run tool_build_rule_package '{}'
     assert_success
 
-    local base="${CLAUDE_PLUGIN_DATA}/rule-packages"
+    local base="${CURSOR_PLUGIN_DATA}/rule-packages"
     assert [ -f "${base}/unit-review-tt-integration.md" ]
     assert [ -f "${base}/unit-review-tt-migration.md" ]
     assert [ -f "${base}/unit-review-grp-placement-tt-integration.md" ]
@@ -573,7 +575,7 @@ _write_typed_rule() {
     run tool_build_rule_package '{"test_type":"acceptance"}'
     assert_failure
     assert_output --partial "cannot compose a catalog for test_type=acceptance"
-    assert [ ! -e "${CLAUDE_PLUGIN_DATA}/rule-packages/unit-review-tt-acceptance.md" ]
+    assert [ ! -e "${CURSOR_PLUGIN_DATA}/rule-packages/unit-review-tt-acceptance.md" ]
 }
 
 # ============================================================================

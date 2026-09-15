@@ -15,7 +15,7 @@ make_post_input() {
 # Helper: run the hook with given JSON input
 run_baseline_hook() {
     local input="$1"
-    export CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR"
+    export CURSOR_PROJECT_DIR="$BATS_TEST_TMPDIR"
     run bash -c 'printf "%s" "$1" | bash "$2"' _ "$input" "$BASELINE_SCRIPT"
 }
 
@@ -100,27 +100,27 @@ create_neon_baseline() {
     create_php_baseline "src/Foo.php"
     run_baseline_hook "$(make_post_input '["src/Foo.php"]')"
     assert_success
-    echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "PostToolUse"'
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("src/Foo.php")'
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("phpstan-baseline.php")'
-    echo "$output" | jq -e '.additional_context == .hookSpecificOutput.additionalContext'
+    echo "$output" | jq -e '.additional_context | type == "string"'
+    echo "$output" | jq -e '.additional_context | contains("src/Foo.php")'
+    echo "$output" | jq -e '.additional_context | contains("phpstan-baseline.php")'
+    echo "$output" | jq -e 'has("hookSpecificOutput") | not'
 }
 
 @test "warns for multiple matching files in PHP baseline" {
     create_php_baseline "src/Foo.php" "src/Bar.php" "src/Baz.php"
     run_baseline_hook "$(make_post_input '["src/Foo.php", "src/Bar.php"]')"
     assert_success
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("src/Foo.php")'
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("src/Bar.php")'
+    echo "$output" | jq -e '.additional_context | contains("src/Foo.php")'
+    echo "$output" | jq -e '.additional_context | contains("src/Bar.php")'
 }
 
 @test "only reports matching files, not unmatched ones" {
     create_php_baseline "src/Foo.php"
     run_baseline_hook "$(make_post_input '["src/Foo.php", "src/Other.php"]')"
     assert_success
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("src/Foo.php")'
+    echo "$output" | jq -e '.additional_context | contains("src/Foo.php")'
     local ctx
-    ctx=$(echo "$output" | jq -r '.hookSpecificOutput.additionalContext')
+    ctx=$(echo "$output" | jq -r '.additional_context')
     [[ "$ctx" != *"src/Other.php"* ]]
 }
 
@@ -133,9 +133,9 @@ create_neon_baseline() {
     create_neon_baseline "src/Foo.php"
     run_baseline_hook "$(make_post_input '["src/Foo.php"]')"
     assert_success
-    echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "PostToolUse"'
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("src/Foo.php")'
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("phpstan-baseline.neon")'
+    echo "$output" | jq -e '.additional_context | type == "string"'
+    echo "$output" | jq -e '.additional_context | contains("src/Foo.php")'
+    echo "$output" | jq -e '.additional_context | contains("phpstan-baseline.neon")'
 }
 
 # ============================================================================
@@ -148,7 +148,7 @@ create_neon_baseline() {
     create_php_baseline "src/Foo.php"
     run_baseline_hook "$(make_post_input '["src/Foo.php"]')"
     assert_success
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("phpstan-baseline.neon")'
+    echo "$output" | jq -e '.additional_context | contains("phpstan-baseline.neon")'
 }
 
 # ============================================================================
@@ -160,7 +160,7 @@ create_neon_baseline() {
     create_php_baseline "src/Foo.php"
     run_baseline_hook "$(make_post_input '["./src/Foo.php"]')"
     assert_success
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("src/Foo.php")'
+    echo "$output" | jq -e '.additional_context | contains("src/Foo.php")'
 }
 
 # ============================================================================
@@ -173,22 +173,21 @@ create_neon_baseline() {
     run_baseline_hook "$(make_post_input '["src/Foo.php"]')"
     assert_success
     echo "$output" | jq -e . >/dev/null
-    echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "PostToolUse"'
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | type == "string"'
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | length > 0'
+    echo "$output" | jq -e '.additional_context | type == "string"'
+    echo "$output" | jq -e '.additional_context | length > 0'
 }
 
 # ============================================================================
-# CLAUDE_PROJECT_DIR fallback to cwd
+# CURSOR_PROJECT_DIR fallback to cwd
 # ============================================================================
 
 # bats test_tags=cwd
-@test "falls back to cwd from input when CLAUDE_PROJECT_DIR unset" {
+@test "falls back to cwd from input when CURSOR_PROJECT_DIR unset" {
     create_php_baseline "src/Foo.php"
-    unset CLAUDE_PROJECT_DIR
+    unset CURSOR_PROJECT_DIR
     local input
     input=$(printf '{"tool_input": {"paths": ["src/Foo.php"]}, "cwd": "%s"}' "$BATS_TEST_TMPDIR")
     run bash -c 'printf "%s" "$1" | bash "$2"' _ "$input" "$BASELINE_SCRIPT"
     assert_success
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("src/Foo.php")'
+    echo "$output" | jq -e '.additional_context | contains("src/Foo.php")'
 }

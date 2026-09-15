@@ -18,7 +18,7 @@ setup() {
     source "${TEST_RULES_LIB_DIR}/common.sh"
     source "${TEST_RULES_LIB_DIR}/get.sh"
     source "${TEST_RULES_LIB_DIR}/build.sh"
-    export CLAUDE_PLUGIN_DATA="${BATS_TEST_TMPDIR}/plugindata"
+    export CURSOR_PLUGIN_DATA="${BATS_TEST_TMPDIR}/plugindata"
 }
 
 _pkg_path() {

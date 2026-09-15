@@ -6,7 +6,7 @@
 
 ```
 plugins/shopware-documentation/
-├── .claude-plugin/
+├── .cursor-plugin/
 │   └── plugin.json
 ├── skills/
 │   └── structuring-documentation/

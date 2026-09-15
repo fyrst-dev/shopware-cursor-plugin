@@ -1,11 +1,11 @@
 ---
 name: phpunit-unit-test-generation
-version: 5.3.0
+version: 6.0.0
 description: Internal sub-skill. Do not auto-activate. Use only when explicitly invoked by name by another skill or agent.
 user-invocable: false
 context: fork
 agent: test-writing:test-generator
-allowed-tools: Read, Grep, Glob, Write, Edit, mcp__plugin_dev-tooling_php-tooling
+allowed-tools: Read, Grep, Glob, Write, Edit, php-tooling
 ---
 
 # PHPUnit Test Generation

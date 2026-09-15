@@ -14,7 +14,7 @@ Generate and validate PHPUnit unit tests for Shopware 6. Automatically analyzes 
 - **PHPStan/PHPUnit Validation**: Automatically validates generated tests with MCP tools
 - **Coverage Exclusion Offer**: When a file is too trivial to test, offers to add it to `phpunit.xml.dist` exclusions to keep coverage reports clean
 - **Shopware Stubs**: Uses StaticEntityRepository, StaticSystemConfigService, Generator
-- **MCP Rule Server**: Dynamic rule discovery with `mcp__plugin_test-writing_test-rules__get_rules` for context-efficient reviews
+- **MCP Rule Server**: Dynamic rule discovery with `get_rules` for context-efficient reviews
 - **Team-Based Consensus Review**: The single Workflow-based reviewer for unit, integration, and migration tests over one mixed manifest — `test_type` (resolved by path) routes each file to its rule catalog, per-type reviewing sub-skill, decomposition track, and adversary lenses. 3 independent reviewers per unit and K independent per-file adversaries (one per lens — tautology / weak-assertion / missed-coverage — each reading a single file). Oversized test classes are decomposed by rule track — method-shards plus a whole-class or body-free structural-digest track — so large files no longer overflow the context window, and large changesets are partitioned into review shards that run as a **campaign of sequential workflow launches** with every stage result persisted to disk, so an interrupted campaign resumes from where it stopped. Stages: independent review + peer reconciliation per shard (consensus), a whole-changeset signals run (cross-file consistency, adoption), and a cost-gated adversarial run (red team, defense, hard-capped arbitration). Deterministic cross-cutting SUT-coverage map and informational integration-to-unit placement flags computed at merge. Findings carry a method-primary locator, a per-finding branch-scope flag (`branch_touched`) on diff runs, a source-change escalation when a fix cannot be made in the test alone, and deletion accounting (`deleted_methods`, `removed_assertions`) naming what a remediation removes. A finding is identified as `rule_id|method`, so reviewers describing one defect differently pool their votes instead of fragmenting into contested singletons. 2-of-3 majority consensus per track, and a review unit that comes back with fewer than two live reviewer stances fails its shard rather than reporting a clean pass. Strictly read-only (see [Team Review](#team-review) below)
 - **Migration Test Generation**: Analyzes migration source classes (SQL operations, updateDestructive logic) to generate pattern-appropriate migration tests
 - **Migration Test Reviewing**: 8 migration-specific rules covering idempotency, cleanup, assertion patterns, and Shopware conventions
@@ -224,7 +224,7 @@ When a source file is SKIPPED because it has no testable logic (trivial DTO, pur
 
 ### Phase 3: Review
 
-1. Loads applicable rules via `mcp__plugin_test-writing_test-rules__get_rules(group={group}, test_type=unit, test_category={detected})` per rule group
+1. Loads applicable rules via `get_rules(group={group}, test_type=unit, test_category={detected})` per rule group
 2. Applies detection algorithms from loaded rules
 3. Returns structured report with errors (must-fix) and warnings (should-fix)
 
@@ -378,8 +378,8 @@ scope:
   mode: scoped | full
   methods: [method1, method2]         # only when mode=scoped
 errors:
-  - rule_id: {rule_id}       # from mcp__plugin_test-writing_test-rules__get_rules response
-    title: {title}            # from mcp__plugin_test-writing_test-rules__get_rules response
+  - rule_id: {rule_id}       # from get_rules response
+    title: {title}            # from get_rules response
     enforce: must-fix
     location: ClassTest.php:45
     method: testValidatesTotal        # the test method the finding is in; "class-level" when whole-class or structural
@@ -488,22 +488,22 @@ The `dev-tooling` plugin must be installed (this plugin bundles an MCP server re
 
 Create `.mcp-php-tooling.json` in your project root. See the [dev-tooling documentation](../dev-tooling/README.md) for configuration options and examples.
 
-The MCP server supports custom config paths via `--config` argument in the bundled `.mcp.json`.
+The MCP server supports custom config paths via `--config` argument in the bundled `mcp.json`.
 
 ### Bundled MCP Servers
 
 This plugin bundles a `test-rules` MCP server that serves test writing rules. The server starts automatically when the plugin is installed.
 
 **Tools:**
-- `mcp__plugin_test-writing_test-rules__get_rules` — Get full rule content by ID or metadata filters (test_type, test_category, group, scope, enforce)
-- `mcp__plugin_test-writing_test-rules__build_rule_package` — Render a rule catalog to a file in plugin storage and return its path. With no arguments it renders the unit-review catalog (convention, design, unit, isolation, provider). Pass `test_type` alone (no `group`) to render that type's *composed* catalog (integration, migration) — its own group plus every convention/design/isolation/provider rule declaring the type. Pass `group` with `test_type` to narrow to a single non-composed group instead (e.g. `group=placement, test_type=integration`, used only by the integration-to-unit migrating skill). Optional scope filters (`review_unit` / `test_category` / `scoped_review`) render a scoped subset under a scope-derived filename. The unified team review builds one composed catalog per test type present at composition time (via `test_type` alone) and passes them to the committed workflow script, which selects each agent's scoped rules from the file's per-type catalog inline, so agents apply only their per-track rules without fetching them per agent.
+- `get_rules` — Get full rule content by ID or metadata filters (test_type, test_category, group, scope, enforce)
+- `build_rule_package` — Render a rule catalog to a file in plugin storage and return its path. With no arguments it renders the unit-review catalog (convention, design, unit, isolation, provider). Pass `test_type` alone (no `group`) to render that type's *composed* catalog (integration, migration) — its own group plus every convention/design/isolation/provider rule declaring the type. Pass `group` with `test_type` to narrow to a single non-composed group instead (e.g. `group=placement, test_type=integration`, used only by the integration-to-unit migrating skill). Optional scope filters (`review_unit` / `test_category` / `scoped_review`) render a scoped subset under a scope-derived filename. The unified team review builds one composed catalog per test type present at composition time (via `test_type` alone) and passes them to the committed workflow script, which selects each agent's scoped rules from the file's per-type catalog inline, so agents apply only their per-track rules without fetching them per agent.
 
 ## 📚 Documentation
 
 Reference files provide detailed guidance:
 
 - **Test categories**: `skills/phpunit-unit-test-reviewing/references/test-categories.md`
-- **Rule summary**: Dynamically served by `mcp__plugin_test-writing_test-rules__get_rules`
+- **Rule summary**: Dynamically served by `get_rules`
 - **Shopware stubs**: `rules/unit/UNIT-003.md` (stub patterns), `skills/phpunit-unit-test-generation/references/shopware-stubs.md` (generation reference)
 - **Output format**: `skills/phpunit-unit-test-reviewing/references/output-format.md`
 - **Report formats**: `skills/phpunit-unit-test-writing/references/report-formats.md`

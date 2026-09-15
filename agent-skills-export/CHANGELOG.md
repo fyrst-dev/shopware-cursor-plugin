@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.0] - 2026-09-15
+
+### Changed
+- Plugin metadata is read from `.cursor-plugin/plugin.json` (Cursor-only marketplace).
+
 ## [0.1.0] - 2026-04-09
 
 ### Added

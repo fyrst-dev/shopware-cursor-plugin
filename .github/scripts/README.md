@@ -105,7 +105,7 @@ Read-only validation that the Cursor marketplace lists the same plugins as Claud
 
 ### update-versions.sh
 
-Synchronizes plugin versions from plugin.json (authoritative source: `.claude-plugin/plugin.json` per plugin) to SKILL.md files and CHANGELOG.md.
+Synchronizes plugin versions from plugin.json (authoritative source: `.cursor-plugin/plugin.json` per plugin) to SKILL.md files and CHANGELOG.md.
 
 **Usage:**
 ```bash
@@ -142,7 +142,7 @@ Library script for discovering plugin components. Source this in other scripts.
 **Usage:**
 ```bash
 export REPO_ROOT="/path/to/repo"
-export MARKETPLACE_JSON="$REPO_ROOT/.claude-plugin/marketplace.json"
+export MARKETPLACE_JSON="$REPO_ROOT/.cursor-plugin/marketplace.json"
 source discover-components.sh
 ```
 
@@ -177,7 +177,7 @@ Shared utilities: logging, validation, dependency checking, GitHub Actions auto-
 YAML manipulation: `extract_dropdown_options()`, `update_dropdown()`.
 
 ### lib/version-operations.sh
-Version management: `extract_plugin_version()`, `extract_skill_version()`, `extract_changelog_version()`, `update_skill_version()`, `update_changelog_header()`. Authoritative source: `.claude-plugin/plugin.json` per plugin.
+Version management: `extract_plugin_version()`, `extract_skill_version()`, `extract_changelog_version()`, `update_skill_version()`, `update_changelog_header()`. Authoritative source: `.cursor-plugin/plugin.json` per plugin.
 
 ## 📦 Requirements
 

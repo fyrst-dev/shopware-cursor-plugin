@@ -1,6 +1,6 @@
 {
   "name": "chunkhound-integration",
-  "version": "3.5.0",
+  "version": "4.0.0",
   "description": "Semantic code research using ChunkHound's multi-hop search and LLM synthesis",
   "author": {
     "name": "Shopware Labs"
@@ -14,7 +14,5 @@
     "chunkhound"
   ],
   "homepage": "https://chunkhound.ai/",
-  "repository": "https://github.com/shopwareLabs/ai-coding-tools",
-  "hooks": "./hooks/cursor-hooks.json",
-  "mcpServers": "./.mcp.json"
+  "repository": "https://github.com/shopwareLabs/ai-coding-tools"
 }

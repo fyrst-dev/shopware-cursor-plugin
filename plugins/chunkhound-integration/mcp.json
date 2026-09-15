@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "ChunkHound": {
-      "command": "${CLAUDE_PLUGIN_ROOT}/scripts/run-chunkhound.sh",
+      "command": "${CURSOR_PLUGIN_ROOT}/scripts/run-chunkhound.sh",
       "args": [],
       "env": {
         "CHUNKHOUND_DB_EXECUTE_TIMEOUT": "120"

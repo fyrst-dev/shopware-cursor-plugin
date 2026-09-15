@@ -6,12 +6,13 @@ description: |
 
   Forms independent assessment before seeing consensus, then challenges weak
   findings and resurrects premature withdrawals with evidence.
-tools: Glob, Grep, Read, Skill, mcp__plugin_test-writing_test-rules__get_rules
-model: sonnet
-color: red
 ---
 
 Execute the task instructions provided in your spawn prompt. Do not deviate from the instructions.
+
+## Tools
+
+Use `Glob`, `Grep`, `Read`, skills, and the `get_rules` MCP tool. Do not write or edit files.
 
 ## Scope Constraints
 

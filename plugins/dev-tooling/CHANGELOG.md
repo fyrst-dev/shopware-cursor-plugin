@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-09-15
+
+### Changed
+- **Cursor-only.** Removed Claude Code packaging (`.claude-plugin/`, `.mcp.json`, PascalCase `hooks/hooks.json`). MCP lives in `mcp.json` with `${CURSOR_PLUGIN_ROOT}`. Hooks use Cursor events (`sessionStart`, `beforeShellExecution`, `postToolUse`) and emit only `additional_context`.
+
+### Removed
+- phpactor plugin LSP (`.lsp.json`, `lsp-server-php/`, `shared/lsp_*.{sh,py}`, LSP session directives). Use an editor PHP language server.
+
 ## [3.21.0] - 2026-09-15
 
 ### Added

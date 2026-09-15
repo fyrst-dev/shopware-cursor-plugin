@@ -3,7 +3,7 @@
 ## Component Overview
 
 This plugin provides:
-- **One MCP Server** via `.mcp.json`:
+- **One MCP Server** via `mcp.json`:
   - `lifecycle-tooling` — 8 tools for dependencies, database, frontend builds, and plugin management
 - **SessionStart Hook** via `hooks/hooks.json`:
   - Injects lifecycle tool directives into conversation context at session start
@@ -26,7 +26,7 @@ plugins/shopware-env/
 ├── CLAUDE.md                                      # Points to AGENTS.md
 ├── CHANGELOG.md                                   # Version history
 ├── LICENSE                                        # MIT license
-├── .mcp.json                                      # MCP server registration (lifecycle-tooling)
+├── mcp.json                                      # MCP server registration (lifecycle-tooling)
 │
 ├── hooks/                                         # HOOKS (MCP tool enforcement)
 │   ├── hooks.json                                 # Hook configuration (SessionStart + PreToolUse)
@@ -174,7 +174,7 @@ Run tests:
 | Modify the protocol handler          | `shared/mcpserver_core.sh`                   | Vendored from `shopwareLabs/bash-mcp-sdk` — changes go upstream, not here |
 | Modify bootstrapping skill          | `skills/dev-environment-bootstrapping/SKILL.md` | 5-phase flow, user story routing, Phase 5 hard stop |
 | Modify server entry point           | `mcp-server-lifecycle/server.sh`             | `CONFIG_PREFIX="php-tooling"`, sourced lib files      |
-| Register/change MCP server          | `.mcp.json`                                  | `mcpServers` object, `CLAUDE_PLUGIN_ROOT`             |
+| Register/change MCP server          | `mcp.json`                                  | `mcpServers` object, `CURSOR_PLUGIN_ROOT`             |
 
 ## Relationship to dev-tooling
 

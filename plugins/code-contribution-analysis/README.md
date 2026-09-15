@@ -73,7 +73,7 @@ for await (const message of query({
     ],
     allowedTools: [
       "Skill",
-      "mcp__plugin_chunkhound-integration_ChunkHound__*"
+      "code_research, search, daemon_status"
     ]
   }
 })) {

@@ -9,8 +9,8 @@ plugins/chunkhound-integration/
 ├── AGENTS.md                     # LLM navigation guide (this file)
 ├── CLAUDE.md                     # Points to AGENTS.md
 ├── CHANGELOG.md                  # Version history
-├── .mcp.json                     # MCP server registration (ChunkHound)
-├── .claude-plugin/
+├── mcp.json                     # MCP server registration (ChunkHound)
+├── .cursor-plugin/
 │   └── plugin.json               # Plugin manifest (name, version, metadata)
 ├── agents/
 │   └── code-researcher.md        # Context-isolated investigation agent
@@ -36,7 +36,7 @@ plugins/chunkhound-integration/
 ## Component Overview
 
 This plugin provides:
-- **MCP Server** via `.mcp.json`: ChunkHound semantic code research tools
+- **MCP Server** via `mcp.json`: ChunkHound semantic code research tools
 - **Skill** via `skills/researching-code/SKILL.md`: Executes code research; picks depth, sequences `code_research`/`search` calls, returns synthesized findings
 - **Agent** via `agents/code-researcher.md`: Context-isolated investigations (auto-activates the skill in a clean conversation window)
 - **SessionStart Hook** via `hooks/hooks.json`: Injects an opinionated directive instructing the model to invoke the `code-researcher` agent sequentially. ChunkHound's background daemon serializes parallel MCP clients onto a single DuckDB writer connection, so parallel subagent dispatch yields no wall-clock benefit and burns extra spawn overhead
@@ -45,9 +45,9 @@ This plugin provides:
 
 | Tool | Purpose | When to Use |
 |------|---------|-------------|
-| `mcp__plugin_chunkhound-integration_ChunkHound__code_research` | Deep architectural analysis with LLM synthesis | "How does X work?", multi-file relationships |
-| `mcp__plugin_chunkhound-integration_ChunkHound__search` | Pinpoint exact locations via regex or semantic search (`type` parameter) | Opens most searches — semantic for concepts, behavior, and relationships; regex for a string already known exactly |
-| `mcp__plugin_chunkhound-integration_ChunkHound__daemon_status` | Daemon health, scan progress, realtime readiness | Verify MCP connection, check scan completion |
+| `code_research` | Deep architectural analysis with LLM synthesis | "How does X work?", multi-file relationships |
+| `search` | Pinpoint exact locations via regex or semantic search (`type` parameter) | Opens most searches — semantic for concepts, behavior, and relationships; regex for a string already known exactly |
+| `daemon_status` | Daemon health, scan progress, realtime readiness | Verify MCP connection, check scan completion |
 
 ## Key Navigation Points
 
@@ -62,10 +62,10 @@ This plugin provides:
 | Modify synthesis output format | `skills/researching-code/SKILL.md` | Step 4 — Overview / Key Components / Architecture Insights / Recommendations / Documentation evidence / Coverage caveats (unsupported-language gaps + documentation index status + index health notes) |
 | Change documentation handling (consultation, drift corroboration, doc reporting) | `skills/researching-code/references/documentation-scope.md` | Consumed by the Step 3 `Documentation scope` rule; feeds the Step 4 `Documentation evidence` section and the `Documentation index status` caveat. Code stays primary evidence; doc claims are labeled corroborated / uncorroborated / contradicted |
 | Modify subagent invocation trigger or model | `agents/code-researcher.md` | Frontmatter `description` routes invocation; `model: sonnet` is pinned because the agent dispatches to the skill rather than reasoning itself (the agent body is a thin wrapper around the skill) |
-| Modify sequential-dispatch directive | `hooks/prompts/sequential-chunkhound-directives.md` | Static prompt emitted by SessionStart as `additionalContext`; covers the `code-researcher` agent and any other subagent that calls `mcp__plugin_chunkhound-integration_ChunkHound__search` or `mcp__plugin_chunkhound-integration_ChunkHound__code_research`. Tone matches the other plugins' MCP-tool directives |
+| Modify sequential-dispatch directive | `hooks/prompts/sequential-chunkhound-directives.md` | Static prompt emitted by SessionStart as `additionalContext`; covers the `code-researcher` agent and any other subagent that calls `search` or `code_research`. Tone matches the other plugins' MCP-tool directives |
 | Sync supported-languages list with upstream ChunkHound | `skills/researching-code/references/supported-languages.md` | Mirror the `Language` enum (`chunkhound/core/types/common.py`) and `EXTENSION_TO_LANGUAGE` (`chunkhound/parsers/parser_factory.py`) from `chunkhound/chunkhound` on GitHub |
 | Add config discovery location | `scripts/run-chunkhound.sh` | `CONFIG_LOCATIONS` array |
-| Modify MCP server invocation | `.mcp.json` | Wrapper script path |
+| Modify MCP server invocation | `mcp.json` | Wrapper script path |
 
 ## When to Modify What
 
@@ -115,7 +115,7 @@ Tests live in `plugin-tests/chunkhound-integration/`: `sweep.bats` covers `skill
 ### Config Discovery Flow
 
 ```
-.mcp.json → run-chunkhound.sh → chunkhound mcp [--config path]
+mcp.json → run-chunkhound.sh → chunkhound mcp [--config path]
                     ↓
          Check CONFIG_LOCATIONS array:
          1. .chunkhound.json (project root)
@@ -142,8 +142,8 @@ Other plugins can reference ChunkHound tools:
 ```yaml
 ---
 tools:
-  - mcp__plugin_chunkhound-integration_ChunkHound__code_research
-  - mcp__plugin_chunkhound-integration_ChunkHound__search
+  - code_research
+  - search
 ---
 
 Use code_research to understand the authentication architecture before implementing changes.

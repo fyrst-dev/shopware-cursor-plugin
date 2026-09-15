@@ -1,74 +1,68 @@
 #!/bin/bash
 # Shared functions for MCP tool enforcement hooks
 # ================================================
-# This library provides common functionality for PreToolUse hooks
-# that block bash commands in favor of MCP tools.
+# This library provides common functionality for Cursor beforeShellExecution
+# and preToolUse hooks that block bash commands in favor of MCP tools.
 #
 # Usage:
 #   source "${SCRIPT_DIR}/lib/common.sh"
 #   parse_hook_input
 #   load_mcp_config "php-tooling"  # or "js-tooling"
 #   # ... pattern matching ...
-#   block_tool "mcp__php-tooling__phpstan_analyze" "Description"
+#   block_tool "phpstan_analyze" "Description"
 
 # Global variables set by this library:
-#   COMMAND - The bash command being checked
+#   COMMAND - The shell command being checked
 #   HOOK_INPUT - Raw hook JSON from stdin (set by parse_hook_input)
+#   PROJECT_DIR - Workspace root
 #   CONFIG_FILE - Path to loaded config file (or empty)
 #   ENVIRONMENT - Environment from config (native/docker/docker-compose/vagrant/ddev)
 #   ENFORCE_MCP_TOOLS - Whether to enforce MCP tools (true/false)
 
-# Resolve the project directory for Claude Code and Cursor hook payloads.
-# Prefers CLAUDE_PROJECT_DIR, then CURSOR_PROJECT_DIR, then workspace_roots/cwd
-# from the hook JSON. Sets CLAUDE_PROJECT_DIR so existing callers keep working.
+# Resolve the project directory from Cursor hook payloads.
+# Prefers CURSOR_PROJECT_DIR, then workspace_roots/cwd from the hook JSON.
 # Args: $1 = optional hook JSON string
 resolve_project_dir() {
     local input="${1:-}"
-    if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
+    if [[ -n "${PROJECT_DIR:-}" ]]; then
         return 0
     fi
     if [[ -n "${CURSOR_PROJECT_DIR:-}" ]]; then
-        CLAUDE_PROJECT_DIR="${CURSOR_PROJECT_DIR}"
+        PROJECT_DIR="${CURSOR_PROJECT_DIR}"
         return 0
     fi
     if [[ -n "$input" ]]; then
         local root
         root=$(printf '%s' "$input" | jq -r '.workspace_roots[0] // .cwd // empty' 2>/dev/null || true)
         if [[ -n "$root" ]]; then
-            CLAUDE_PROJECT_DIR="$root"
+            PROJECT_DIR="$root"
         fi
     fi
 }
 
-# Emit hook context that both Claude Code (hookSpecificOutput.additionalContext)
-# and Cursor (additional_context) accept.
-# Args: $1 = hook event name (SessionStart / PostToolUse)
+# Emit Cursor sessionStart / postToolUse context.
+# Args: $1 = unused (kept so callers can pass the event name)
 #       $2 = context string
 emit_additional_context() {
-    local event_name="$1"
     local context="$2"
     local json_context
     json_context=$(printf '%s' "${context}" | jq -Rs '.')
     cat <<EOF
 {
-  "hookSpecificOutput": {
-    "hookEventName": "${event_name}",
-    "additionalContext": ${json_context}
-  },
   "additional_context": ${json_context}
 }
 EOF
 }
 
 # Parse hook input from stdin
-# Sets: COMMAND, HOOK_INPUT (globals)
+# Sets: COMMAND, HOOK_INPUT, PROJECT_DIR (globals)
 # Exits 0 if command is empty
 parse_hook_input() {
     local input
     input=$(cat)
     HOOK_INPUT="$input"
     resolve_project_dir "$input"
-    COMMAND=$(printf '%s' "$input" | jq -r '.tool_input.command // .command // empty')
+    COMMAND=$(printf '%s' "$input" | jq -r '.command // .tool_input.command // empty')
     if [[ -z "$COMMAND" ]]; then
         exit 0
     fi
@@ -86,19 +80,16 @@ load_mcp_config() {
 
     resolve_project_dir "${HOOK_INPUT:-}"
 
-    if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
-        # Check config locations in priority order
-        for location in ".claude/.mcp-${config_prefix}.json" ".cursor/.mcp-${config_prefix}.json" ".mcp-${config_prefix}.json"; do
-            if [[ -f "${CLAUDE_PROJECT_DIR}/${location}" ]]; then
-                CONFIG_FILE="${CLAUDE_PROJECT_DIR}/${location}"
+    if [[ -n "${PROJECT_DIR:-}" ]]; then
+        for location in ".cursor/.mcp-${config_prefix}.json" ".mcp-${config_prefix}.json"; do
+            if [[ -f "${PROJECT_DIR}/${location}" ]]; then
+                CONFIG_FILE="${PROJECT_DIR}/${location}"
                 break
             fi
         done
 
         if [[ -n "$CONFIG_FILE" ]]; then
             ENVIRONMENT=$(jq -r '.environment // empty' "$CONFIG_FILE" 2>/dev/null || true)
-            # Check if MCP tool enforcement is disabled (default: true)
-            # Note: jq's // operator treats false as falsy, so we check explicitly
             local enforce_value
             enforce_value=$(jq -r 'if .enforce_mcp_tools == false then "false" else "true" end' "$CONFIG_FILE" 2>/dev/null || echo "true")
             if [[ "$enforce_value" == "false" ]]; then
@@ -107,38 +98,36 @@ load_mcp_config() {
         fi
     fi
 
-    # Early exit if enforcement is disabled
     if [[ "$ENFORCE_MCP_TOOLS" == "false" ]]; then
         exit 0
     fi
 }
 
 # Block a tool with formatted message
-# Args: $1 = full MCP tool name (e.g., "mcp__php-tooling__phpstan_analyze")
+# Args: $1 = MCP tool name (e.g., "phpstan_analyze")
 #       $2 = description of what to use instead
-# Outputs to stderr and exits with code 2
+# Outputs Cursor deny JSON on stdout, a human message on stderr, exits 2
 block_tool() {
     local tool="$1"
     local description="$2"
+    local message
 
-    {
-        echo "🤖 Down, model! Use the ${tool} instead!"
-        echo ""
-        echo "Bad command detected: ${COMMAND}"
-        echo ""
-        echo "You were trained better than this! ${description}"
-        echo ""
-        if [[ -n "$ENVIRONMENT" ]]; then
-            echo "Good models use MCP tools because they:"
-            echo "  🔧 Handle your '${ENVIRONMENT}' environment automatically"
-            echo "  🔧 Use project configuration without extra flags"
-            echo "  🔧 Earn you treats (user approval)"
-        else
-            echo "Good models use MCP tools because they:"
-            echo "  🔧 Handle environment detection (native/docker/docker-compose/vagrant/ddev)"
-            echo "  🔧 Run in correct directory context automatically"
-            echo "  🔧 Earn you treats (user approval)"
-        fi
-    } >&2
+    message="$(cat <<EOF
+Use the ${tool} MCP tool instead.
+
+Bad command detected: ${COMMAND}
+
+${description}
+EOF
+)"
+
+    if [[ -n "$ENVIRONMENT" ]]; then
+        message+=$'\n\n'"MCP tools handle the '${ENVIRONMENT}' environment and project configuration automatically."
+    else
+        message+=$'\n\n'"MCP tools handle environment detection (native/docker/docker-compose/vagrant/ddev) and directory context automatically."
+    fi
+
+    printf '%s\n' "$message" >&2
+    jq -n --arg msg "$message" '{permission: "deny", user_message: $msg, agent_message: $msg}'
     exit 2
 }

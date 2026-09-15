@@ -2,12 +2,12 @@
 #
 # validate-cursor-plugins.sh
 #
-# Validates the Cursor marketplace sidecar against the Claude Code marketplace:
-# - .cursor-plugin/marketplace.json exists and lists the same plugin names
+# Validates the Cursor-only marketplace:
+# - .cursor-plugin/marketplace.json exists and lists plugins
 # - each plugin has .cursor-plugin/plugin.json
-# - Cursor plugin names match the directory / Claude manifest
-# - MCP plugins point mcpServers at ./.mcp.json and that file exists
-# - hook plugins point hooks at ./hooks/cursor-hooks.json and that file exists
+# - no Claude Code marketplace or plugin manifests remain
+# - MCP plugins ship mcp.json (default discovery) with CURSOR_PLUGIN_ROOT
+# - hook plugins ship hooks/hooks.json with camelCase Cursor events
 # - test-writing sets rules to [] so the PHPUnit catalog is not loaded as Cursor rules
 #
 # Usage:
@@ -22,7 +22,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-CLAUDE_MARKETPLACE="$REPO_ROOT/.claude-plugin/marketplace.json"
 CURSOR_MARKETPLACE="$REPO_ROOT/.cursor-plugin/marketplace.json"
 
 # shellcheck source=./lib/common.sh
@@ -41,9 +40,9 @@ require_file() {
   return 0
 }
 
-if [ ! -f "$CLAUDE_MARKETPLACE" ]; then
-  log_error "Claude marketplace.json not found"
-  exit 2
+if [ -e "$REPO_ROOT/.claude-plugin" ]; then
+  log_error "Claude marketplace directory must not exist: .claude-plugin/"
+  failed=$((failed + 1))
 fi
 
 require_file "$CURSOR_MARKETPLACE" "Cursor marketplace.json" || exit 2
@@ -53,29 +52,30 @@ if ! jq -e '.name and .owner.name and .plugins' "$CURSOR_MARKETPLACE" >/dev/null
   exit 1
 fi
 
-claude_names=$(jq -r '.plugins[].name' "$CLAUDE_MARKETPLACE" | sort)
-cursor_names=$(jq -r '.plugins[].name' "$CURSOR_MARKETPLACE" | sort)
-
-if [ "$claude_names" != "$cursor_names" ]; then
-  log_error "Cursor marketplace plugin names do not match Claude marketplace"
-  log_info "Claude: $(echo "$claude_names" | tr '\n' ' ')"
-  log_info "Cursor: $(echo "$cursor_names" | tr '\n' ' ')"
-  failed=$((failed + 1))
-fi
-
 while IFS= read -r plugin_name; do
   [ -z "$plugin_name" ] && continue
   source_path=$(jq -r --arg name "$plugin_name" '.plugins[] | select(.name == $name) | .source // empty' "$CURSOR_MARKETPLACE")
   plugin_dir="$REPO_ROOT/${source_path#./}"
   cursor_json="${plugin_dir}/.cursor-plugin/plugin.json"
-  claude_json="${plugin_dir}/.claude-plugin/plugin.json"
 
   log_info "Checking $plugin_name"
 
-  if ! require_file "$cursor_json" "Cursor plugin.json"; then
-    continue
+  if [ -e "${plugin_dir}/.claude-plugin" ]; then
+    log_error "$plugin_name: Claude plugin directory must not exist: ${plugin_dir#"$REPO_ROOT/"}/.claude-plugin/"
+    failed=$((failed + 1))
   fi
-  if ! require_file "$claude_json" "Claude plugin.json"; then
+
+  if [ -f "${plugin_dir}/.mcp.json" ]; then
+    log_error "$plugin_name: Claude .mcp.json must not exist; use mcp.json"
+    failed=$((failed + 1))
+  fi
+
+  if [ -f "${plugin_dir}/hooks/cursor-hooks.json" ]; then
+    log_error "$plugin_name: hooks/cursor-hooks.json is a dual-compat leftover; use hooks/hooks.json"
+    failed=$((failed + 1))
+  fi
+
+  if ! require_file "$cursor_json" "Cursor plugin.json"; then
     continue
   fi
 
@@ -85,32 +85,37 @@ while IFS= read -r plugin_name; do
     failed=$((failed + 1))
   fi
 
-  mcp_path=$(jq -r '.mcpServers // empty' "$cursor_json")
-  if [ -n "$mcp_path" ]; then
-    mcp_file="${plugin_dir}/${mcp_path#./}"
-    require_file "$mcp_file" "$plugin_name mcpServers" || true
-  elif [ -f "${plugin_dir}/.mcp.json" ]; then
-    log_error "$plugin_name: has .mcp.json but Cursor plugin.json does not set mcpServers"
+  if jq -e '.mcpServers != null' "$cursor_json" >/dev/null; then
+    log_error "$plugin_name: plugin.json should omit mcpServers and use default mcp.json discovery"
     failed=$((failed + 1))
   fi
 
-  hooks_path=$(jq -r '.hooks // empty' "$cursor_json")
-  if [ -n "$hooks_path" ]; then
-    hooks_file="${plugin_dir}/${hooks_path#./}"
-    if require_file "$hooks_file" "$plugin_name hooks"; then
-      if ! jq -e '.hooks | type == "object"' "$hooks_file" >/dev/null; then
-        log_error "$plugin_name: $hooks_path is not a Cursor hooks object"
-        failed=$((failed + 1))
-      fi
-      pascal=$(jq -r '.hooks | keys[]' "$hooks_file" | grep -E '^[A-Z]' || true)
-      if [ -n "$pascal" ]; then
-        log_error "$plugin_name: Cursor hooks file still uses Claude PascalCase events: $pascal"
-        failed=$((failed + 1))
-      fi
-    fi
-  elif [ -f "${plugin_dir}/hooks/hooks.json" ]; then
-    log_error "$plugin_name: has Claude hooks.json but Cursor plugin.json does not set hooks"
+  if jq -e '.hooks != null' "$cursor_json" >/dev/null; then
+    log_error "$plugin_name: plugin.json should omit hooks and use default hooks/hooks.json discovery"
     failed=$((failed + 1))
+  fi
+
+  if [ -f "${plugin_dir}/mcp.json" ]; then
+    if grep -q 'CLAUDE_PLUGIN_ROOT' "${plugin_dir}/mcp.json"; then
+      log_error "$plugin_name: mcp.json still references CLAUDE_PLUGIN_ROOT"
+      failed=$((failed + 1))
+    fi
+    if ! jq -e '.mcpServers | type == "object"' "${plugin_dir}/mcp.json" >/dev/null; then
+      log_error "$plugin_name: mcp.json is missing an mcpServers object"
+      failed=$((failed + 1))
+    fi
+  fi
+
+  if [ -f "${plugin_dir}/hooks/hooks.json" ]; then
+    if ! jq -e '.hooks | type == "object"' "${plugin_dir}/hooks/hooks.json" >/dev/null; then
+      log_error "$plugin_name: hooks/hooks.json is not a Cursor hooks object"
+      failed=$((failed + 1))
+    fi
+    pascal=$(jq -r '.hooks | keys[]' "${plugin_dir}/hooks/hooks.json" | grep -E '^[A-Z]' || true)
+    if [ -n "$pascal" ]; then
+      log_error "$plugin_name: hooks/hooks.json still uses Claude PascalCase events: $pascal"
+      failed=$((failed + 1))
+    fi
   fi
 
   if [ "$plugin_name" = "test-writing" ]; then
@@ -124,7 +129,7 @@ while IFS= read -r plugin_name; do
 done <<< "$(jq -r '.plugins[].name' "$CURSOR_MARKETPLACE")"
 
 if [ "$failed" -eq 0 ]; then
-  log_success "Cursor marketplace is consistent with the Claude marketplace"
+  log_success "Cursor marketplace is consistent"
   exit 0
 fi
 

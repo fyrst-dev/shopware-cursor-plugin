@@ -15,7 +15,7 @@ plugins/dev-tooling/
 ├── CLAUDE.md                           # Points to AGENTS.md
 ├── CHANGELOG.md                        # Version history
 ├── LICENSE                             # MIT license
-├── .mcp.json                           # MCP server registration (php-tooling, js-admin-tooling, js-storefront-tooling)
+├── mcp.json                           # MCP server registration (php-tooling, js-admin-tooling, js-storefront-tooling)
 ├── .lsp.json                           # LSP server configuration (phpactor PHP LSP)
 │
 ├── agents/                             # AGENTS (dev-tooling check/fix executor)
@@ -95,7 +95,7 @@ plugins/dev-tooling/
 ## 🧱 Component Overview
 
 This plugin provides:
-- **Three MCP Servers** via `.mcp.json`:
+- **Three MCP Servers** via `mcp.json`:
   - `php-tooling` - PHP linting/testing tools
   - `js-admin-tooling` - Administration JavaScript tools (Vue 3/Vite)
   - `js-storefront-tooling` - Storefront JavaScript tools (vanilla JS/Webpack): `eslint_check`, `eslint_fix`, `stylelint_check`, `stylelint_fix`, `jest_run`, `vitest_run`, `ludtwig_check`, `ludtwig_fix`, `webpack_build`
@@ -134,7 +134,7 @@ This plugin provides:
 
 **Model**: Haiku | **Mutation boundary**: enforced via `tools` + `disallowedTools` — no `Edit`/`Write`, no `console_*` / `unit_setup` (`permissionMode` is ignored for plugin subagents)
 
-**Tools**: `Read`, `mcp__plugin_dev-tooling_php-tooling__*`, `mcp__plugin_dev-tooling_js-admin-tooling__*`, `mcp__plugin_dev-tooling_js-storefront-tooling__*` (`console_run` / `console_list` / `unit_setup` removed via `disallowedTools`)
+**Tools**: `Read`, `php-tooling MCP tools`, `js-admin-tooling MCP tools`, `js-storefront-tooling MCP tools` (`console_run` / `console_list` / `unit_setup` removed via `disallowedTools`)
 
 ## 🏗️ Architecture
 
@@ -231,7 +231,7 @@ Both handle environment-specific execution (native/docker/docker-compose/vagrant
 | Add noise filter pattern | `templates/mcp-shared/environment.sh` (edit template, sync per `.claude/rules/template-sync.md`) | - | `ENV_NOISE_PATTERNS` array, `_filter_env_noise()` |
 | Modify protocol | upstream `shopwareLabs/bash-mcp-sdk` (release pinned in `.mcp-sdk.lock`; never edit `shared/mcpserver_core.sh` in place) | - | `process_request()`, `handle_*()` |
 | Update tool schemas | `mcp-server-*/tools.json` | - | JSON Schema Draft 7 |
-| Register new server | `.mcp.json` | - | `mcpServers` object |
+| Register new server | `mcp.json` | - | `mcpServers` object |
 
 ## ✏️ When to Modify What
 
@@ -265,7 +265,7 @@ Both handle environment-specific execution (native/docker/docker-compose/vagrant
 **Adding a third language** (e.g., Python):
 1. Create `mcp-server-python/` with same structure
 2. Set `CONFIG_PREFIX="python-tooling"` in server.sh
-3. Add to `.mcp.json` as `python-tooling` server
+3. Add to `mcp.json` as `python-tooling` server
 4. Optionally add `wrap_python_command()` to environment.sh
 
 ## 🔗 Integration with Other Plugins

@@ -9,7 +9,7 @@ SCRIPTS_DIR="${PLUGIN_DIR}/hooks/scripts"
 setup_config() {
     local prefix="$1"
     local content="$2"
-    export CLAUDE_PROJECT_DIR="${BATS_TEST_TMPDIR}"
+    export CURSOR_PROJECT_DIR="${BATS_TEST_TMPDIR}"
     printf '%s\n' "$content" > "${BATS_TEST_TMPDIR}/.mcp-${prefix}.json"
 }
 
@@ -38,6 +38,5 @@ setup() {
 }
 
 teardown() {
-    unset CLAUDE_PROJECT_DIR
     unset CURSOR_PROJECT_DIR
 }

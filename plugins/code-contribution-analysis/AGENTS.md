@@ -4,7 +4,7 @@
 
 ```
 plugins/code-contribution-analysis/
-├── .claude-plugin/
+├── .cursor-plugin/
 │   └── plugin.json               # Plugin manifest (name, version, metadata)
 ├── README.md                     # User documentation
 ├── AGENTS.md                     # LLM navigation guide (this file)

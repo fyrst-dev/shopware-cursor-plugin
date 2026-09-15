@@ -7,11 +7,11 @@ load 'test_helper/common_setup'
 SCRIPT="${REPO_ROOT}/plugins/dev-tooling/hooks/scripts/session-start.sh"
 
 setup() {
-    export CLAUDE_PROJECT_DIR="${BATS_TEST_TMPDIR}"
+    export CURSOR_PROJECT_DIR="${BATS_TEST_TMPDIR}"
 }
 
 teardown() {
-    unset CLAUDE_PROJECT_DIR
+    unset CURSOR_PROJECT_DIR
 }
 
 @test "session-start: no scopes -> section absent" {

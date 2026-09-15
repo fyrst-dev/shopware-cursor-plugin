@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claude Code Hook: PHPStan Baseline Staleness Check (PostToolUse)
+# Cursor hook: PHPStan baseline staleness check (postToolUse)
 # =================================================================
 # After phpstan_analyze runs on specific files, checks whether those
 # files have entries in the PHPStan baseline. Stale baseline entries
@@ -27,8 +27,8 @@ if [[ -z "$PATHS_LIST" ]]; then
     exit 0
 fi
 
-# Detect project directory (Claude Code, Cursor, or hook payload)
-PROJECT_DIR="${CLAUDE_PROJECT_DIR:-${CURSOR_PROJECT_DIR:-}}"
+# Detect project directory (Cursor env or hook payload)
+PROJECT_DIR="${CURSOR_PROJECT_DIR:-}"
 if [[ -z "$PROJECT_DIR" ]]; then
     PROJECT_DIR=$(printf '%s' "$INPUT" | jq -r '.workspace_roots[0] // .cwd // empty')
 fi
@@ -72,14 +72,9 @@ for f in "${MATCHED_FILES[@]}"; do
 done
 WARNING="${WARNING}\n\nThese baseline entries may be stale. If your changes fixed the underlying errors, remove the corresponding entries from ${BASENAME} to avoid CI failures."
 
-# Output as additionalContext for Claude Code and additional_context for Cursor
 CONTEXT=$(printf '%b' "$WARNING" | jq -Rs '.')
 cat <<EOF
 {
-  "hookSpecificOutput": {
-    "hookEventName": "PostToolUse",
-    "additionalContext": ${CONTEXT}
-  },
   "additional_context": ${CONTEXT}
 }
 EOF

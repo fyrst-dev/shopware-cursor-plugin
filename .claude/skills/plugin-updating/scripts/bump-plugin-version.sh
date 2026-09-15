@@ -5,8 +5,7 @@
 # Usage: bump-plugin-version.sh <plugin-name> <new-version>
 #
 # Updates in-place:
-#   plugins/<plugin-name>/.claude-plugin/plugin.json   (top-level "version" field)
-#   plugins/<plugin-name>/.cursor-plugin/plugin.json   (same field, when present)
+#   plugins/<plugin-name>/.cursor-plugin/plugin.json   (top-level "version" field)
 #   plugins/<plugin-name>/skills/*/SKILL.md            (frontmatter "version" field)
 #
 # Does NOT touch CHANGELOG.md (needs semantic content).
@@ -33,14 +32,14 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
 }
 
 PLUGIN_DIR="$REPO_ROOT/plugins/$PLUGIN"
-PLUGIN_JSON="$PLUGIN_DIR/.claude-plugin/plugin.json"
+PLUGIN_JSON="$PLUGIN_DIR/.cursor-plugin/plugin.json"
 
 if [ ! -d "$PLUGIN_DIR" ]; then
   echo "Error: plugin directory not found: plugins/$PLUGIN" >&2
   exit 1
 fi
 if [ ! -f "$PLUGIN_JSON" ]; then
-  echo "Error: plugin.json not found: plugins/$PLUGIN/.claude-plugin/plugin.json" >&2
+  echo "Error: plugin.json not found: plugins/$PLUGIN/.cursor-plugin/plugin.json" >&2
   exit 1
 fi
 
@@ -72,21 +71,6 @@ awk -v v="$NEW_VERSION" '
 ' "$PLUGIN_JSON" > "$tmp"
 mv "$tmp" "$PLUGIN_JSON"
 printf '  %s  (%s -> %s)\n' "$(rel "$PLUGIN_JSON")" "$OLD_VERSION" "$NEW_VERSION"
-
-# 1b. Cursor sidecar manifest — keep the version lockstep with Claude Code
-CURSOR_PLUGIN_JSON="$PLUGIN_DIR/.cursor-plugin/plugin.json"
-if [ -f "$CURSOR_PLUGIN_JSON" ]; then
-  tmp="$(mktemp)"
-  awk -v v="$NEW_VERSION" '
-    !done && /^[[:space:]]*"version"[[:space:]]*:/ {
-      sub(/:[[:space:]]*"[^"]*"/, ": \"" v "\"")
-      done = 1
-    }
-    { print }
-  ' "$CURSOR_PLUGIN_JSON" > "$tmp"
-  mv "$tmp" "$CURSOR_PLUGIN_JSON"
-  printf '  %s  (%s -> %s)\n' "$(rel "$CURSOR_PLUGIN_JSON")" "$OLD_VERSION" "$NEW_VERSION"
-fi
 
 # 2. SKILL.md frontmatters
 SKILLS_DIR="$PLUGIN_DIR/skills"

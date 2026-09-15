@@ -10,7 +10,7 @@ class TestFindPluginJson:
     def test_finds_plugin_json_at_ancestor(self, tmp_path, depth):
         plugin_root = tmp_path / "plugin-root"
         plugin_root.mkdir()
-        claude_plugin = plugin_root / ".claude-plugin"
+        claude_plugin = plugin_root / ".cursor-plugin"
         claude_plugin.mkdir()
         (claude_plugin / "plugin.json").write_text(
             json.dumps(

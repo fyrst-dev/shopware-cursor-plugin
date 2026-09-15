@@ -1,6 +1,6 @@
 # Pre-flight: daemon_status
 
-Call `mcp__plugin_chunkhound-integration_ChunkHound__daemon_status` once per skill invocation when the planned approach uses any ChunkHound primitive (`code_research` or `search`). Skip only when the plan searches no code — a known-path `Read` and a path-pattern `bfs` both qualify, because neither consults the index. Every plan that searches code opens with a ChunkHound primitive and therefore reaches this gate. Do not cache between invocations — daemon state drifts.
+Call `daemon_status` once per skill invocation when the planned approach uses any ChunkHound primitive (`code_research` or `search`). Skip only when the plan searches no code — a known-path `Read` and a path-pattern `bfs` both qualify, because neither consults the index. Every plan that searches code opens with a ChunkHound primitive and therefore reaches this gate. Do not cache between invocations — daemon state drifts.
 
 ## Hard gates — STOP if any fail
 
@@ -19,7 +19,7 @@ Run this gate only when the plan uses ChunkHound primitives that rely on embeddi
 The probe is cheap — `search` is fast, unlike `code_research`. Use a high-recall noise word:
 
 ```
-mcp__plugin_chunkhound-integration_ChunkHound__search(
+search(
   type="semantic",
   query="function",
   page_size=1

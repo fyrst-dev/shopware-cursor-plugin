@@ -1,9 +1,9 @@
 ---
 name: phpunit-migration-test-reviewing
-version: 5.3.0
+version: 6.0.0
 description: Internal sub-skill. Do not auto-activate. Use only when explicitly invoked by name by another skill or agent.
 user-invocable: false
-allowed-tools: Glob, Grep, Read, mcp__plugin_test-writing_test-rules__get_rules
+allowed-tools: Glob, Grep, Read, get_rules
 ---
 
 # PHPUnit Migration Test Review
@@ -92,7 +92,7 @@ digraph migration_review {
 
 ### Phase 3: Rule Review Filters
 
-All `mcp__plugin_test-writing_test-rules__get_rules` calls in Phase 4 carry `test_type=migration` and NO `group` — that composes the catalog for this test type. Adding `group=migration` narrows it back to the migration group alone and drops every shared rule.
+All `get_rules` calls in Phase 4 carry `test_type=migration` and NO `group` — that composes the catalog for this test type. Adding `group=migration` narrows it back to the migration group alone and drops every shared rule.
 
 When `{methods}` is provided, also add `scoped_review=true`. When `{review_unit}` is set, also add `review_unit={value}`; the filter is single-valued per call, so for a list (e.g. the fused whole-class track `[class-structure, class-bodies]`) issue one call per value and union the results. Never pass a `test_category` filter — A–E categories are a unit-review axis.
 
@@ -133,7 +133,7 @@ Apply the pre-review baseline: when `{baseline}` is `fail`, the report opens wit
 
 For output format and examples, see references/output-format.md.
 
-Report each issue using the rule's ID and title from `mcp__plugin_test-writing_test-rules__get_rules`:
+Report each issue using the rule's ID and title from `get_rules`:
 ```
 ### [{rule_id}] {title}
 ```
@@ -219,7 +219,7 @@ The team review decomposes large files into per-track reviews. Each track also r
 
 ### MCP Tool Unavailability
 
-If `mcp__plugin_test-writing_test-rules__get_rules` is unavailable:
+If `get_rules` is unavailable:
 - Report error: "test-rules MCP server not available — ensure the test-writing plugin is installed and Claude Code was restarted"
 - Do not fall back to hardcoded checks
 

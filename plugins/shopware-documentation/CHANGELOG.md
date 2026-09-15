@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.0.0] - 2026-09-15
+
+### Changed
+- **Cursor-only.** Removed the Claude Code `plugin.json`. The plugin is a Cursor skill pack (`.cursor-plugin/plugin.json`).
+
 ## [1.1.0] - 2026-09-15
 
 ### Added

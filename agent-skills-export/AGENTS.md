@@ -37,7 +37,7 @@ agent-skills-export/
 ## Build Pipeline (core.py)
 
 1. Parse `SKILL.md` frontmatter with PyYAML
-2. Walk up to find nearest `.claude-plugin/plugin.json`
+2. Walk up to find nearest `.cursor-plugin/plugin.json`
 3. Strip non-spec fields (`version`, `model`, `allowed-tools`)
 4. Enrich from plugin.json (`metadata.version`, `metadata.author`, `license`)
 5. Rewrite SKILL.md with transformed frontmatter + original body

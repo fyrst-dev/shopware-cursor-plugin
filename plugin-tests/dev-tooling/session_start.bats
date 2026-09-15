@@ -15,17 +15,13 @@ run_session_start() {
 # ============================================================================
 
 # bats test_tags=output
-@test "outputs valid JSON with additionalContext" {
+@test "outputs valid JSON with additional_context" {
     run_session_start
     assert_success
-    # Valid JSON
     echo "$output" | jq -e . >/dev/null
-    # Correct structure
-    echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "SessionStart"'
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | type == "string"'
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | length > 0'
     echo "$output" | jq -e '.additional_context | type == "string"'
-    echo "$output" | jq -e '.additional_context == .hookSpecificOutput.additionalContext'
+    echo "$output" | jq -e '.additional_context | length > 0'
+    echo "$output" | jq -e 'has("hookSpecificOutput") | not'
 }
 
 # ============================================================================
@@ -46,7 +42,7 @@ run_session_start() {
     setup_config "js-tooling" '{"environment": "native", "enforce_mcp_tools": true}'
     run_session_start
     assert_success
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | length > 0'
+    echo "$output" | jq -e '.additional_context | length > 0'
 }
 
 @test "outputs when only js enforcement disabled" {
@@ -54,13 +50,13 @@ run_session_start() {
     setup_config "js-tooling" '{"environment": "native", "enforce_mcp_tools": false}'
     run_session_start
     assert_success
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | length > 0'
+    echo "$output" | jq -e '.additional_context | length > 0'
 }
 
 @test "outputs when no config files exist" {
-    export CLAUDE_PROJECT_DIR="${BATS_TEST_TMPDIR}/empty"
-    mkdir -p "$CLAUDE_PROJECT_DIR"
+    export CURSOR_PROJECT_DIR="${BATS_TEST_TMPDIR}/empty"
+    mkdir -p "$CURSOR_PROJECT_DIR"
     run_session_start
     assert_success
-    echo "$output" | jq -e '.hookSpecificOutput.additionalContext | length > 0'
+    echo "$output" | jq -e '.additional_context | length > 0'
 }

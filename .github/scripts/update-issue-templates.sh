@@ -21,7 +21,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 export REPO_ROOT
-export MARKETPLACE_JSON="$REPO_ROOT/.claude-plugin/marketplace.json"
+export MARKETPLACE_JSON="$REPO_ROOT/.cursor-plugin/marketplace.json"
 export TEMPLATES_DIR="$REPO_ROOT/.github/ISSUE_TEMPLATE"
 
 # Source libraries

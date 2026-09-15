@@ -1,6 +1,6 @@
 ---
 name: xml-config-migrating
-version: 1.1.0
+version: 2.0.0
 description: Use this skill when a Shopware plugin or app-server extension needs its XML configuration migrated to PHP — phrases like "migrate services.xml", "convert my plugin config to PHP", "xml to php migration", "fix the XML deprecation", "prepare my plugin for Shopware 6.8 / Symfony 8", or when a deprecation like "The XML configuration file ... is deprecated and will not be loaded in v6.8.0.0" appears in logs or CI.
 license: MIT
 ---
@@ -27,7 +27,7 @@ The migration is mechanical and behavior-neutral: the compiled container and rou
 - `jq` available on the host for `verify-dumps.sh`.
 - The dump directory and the extension sources readable from where the bundled scripts run.
 
-`${CLAUDE_SKILL_DIR}` is this skill's own directory; on a host that does not define it, substitute the path to this skill's directory.
+`${CURSOR_PLUGIN_ROOT}` is this skill's own directory; on a host that does not define it, substitute the path to this skill's directory.
 
 ## Workflow
 
@@ -77,7 +77,7 @@ digraph xml_config_migrating {
 ### Step 1: Inventory
 
 ```
-bash "${CLAUDE_SKILL_DIR}/scripts/inventory.sh" <extension-src-root>
+bash "${CURSOR_PLUGIN_ROOT}/scripts/inventory.sh" <extension-src-root>
 ```
 
 The script emits one TSV row per in-scope XML file: `path<TAB>type<TAB>envs`. `type` is `services`, `routes`, or `packages`. `envs` is a comma-separated list. Location decides how it is derived: a file directly in `Resources/config` takes its env from a filename suffix (`services_test.xml`, `routes_<env>.xml`); a file under a `routes/` or `packages/` subdirectory instead takes its env from that subdirectory's name (e.g. `routes/dev/api.xml`, `packages/test/monolog.xml`, including a file nested further below it), and the filename contributes nothing there — a file directly under `routes/` or `packages/` with no subdirectory is `default`. Each `<when env="X">` occurrence appends `X` on top of that.
@@ -124,7 +124,7 @@ Apply the rules and translation table in references/xml-to-php-translation.md. F
 ### Step 4: Import pre-check
 
 ```
-bash "${CLAUDE_SKILL_DIR}/scripts/check-class-imports.sh" <file.php>...
+bash "${CURSOR_PLUGIN_ROOT}/scripts/check-class-imports.sh" <file.php>...
 ```
 
 Pass every migrated PHP file. A bare `Foo::class` without a matching `use` resolves against the config file's own namespace — no parse error, just a wrong service id. Exit 0 means every referenced class is imported; exit 1 lists the missing ones; exit 2 is invalid invocation or a scan failure.
@@ -144,7 +144,7 @@ The `before-*` dumps are immutable once the migration starts and are never re-ta
 ### Step 7: Verify
 
 ```
-bash "${CLAUDE_SKILL_DIR}/scripts/verify-dumps.sh" var/xml-migration <extension-src-root> <envs-csv>
+bash "${CURSOR_PLUGIN_ROOT}/scripts/verify-dumps.sh" var/xml-migration <extension-src-root> <envs-csv>
 ```
 
 Pass the same env union as Steps 2 and 6.

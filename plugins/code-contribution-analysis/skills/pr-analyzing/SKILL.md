@@ -1,6 +1,6 @@
 ---
 name: pr-analyzing
-version: 1.1.0
+version: 2.0.0
 description: Use this skill when the user asks to analyze a specific GitHub pull request, review a PR's architectural impact, assess what changed in a PR and why it matters, or research the code relationships affected by a PR — example triggers like "analyze PR #4521", "what's the impact of this PR?", "review the architectural implications of pull request 4521", "is this PR risky", "what does this PR touch". Activate any time the user references a specific GitHub PR number and wants scope, impact, or architectural context, even when they do not explicitly say "analyze". Fetches PR metadata, diff, files, reviews, and inline comments from GitHub, then researches architectural context via the chunkhound-integration code_research tool. Accepts an optional triage reasoning context from callers. Do NOT activate for generic code questions that do not reference a specific PR.
 ---
 
@@ -12,7 +12,7 @@ Do not activate for generic code questions that do not reference a specific PR.
 
 ## Prerequisites
 
-Requires the **chunkhound-integration** companion plugin. The skill calls `mcp__plugin_chunkhound-integration_ChunkHound__code_research` at Step 3 and stops with an error if that tool is not callable — see [Errors](#errors).
+Requires the **chunkhound-integration** companion plugin. The skill calls `code_research` at Step 3 and stops with an error if that tool is not callable — see [Errors](#errors).
 
 PR data is fetched from GitHub using whatever access the session has available (a GitHub MCP server, the `gh` CLI, or direct API calls).
 
@@ -49,7 +49,7 @@ This assessment drives how much research depth Step 3 warrants.
 
 ### Step 3 — Research architectural impact
 
-Use `mcp__plugin_chunkhound-integration_ChunkHound__code_research` with an **incremental strategy** — each stage runs only if the prior stage's findings are insufficient.
+Use `code_research` with an **incremental strategy** — each stage runs only if the prior stage's findings are insufficient.
 
 **Stage 1 — Identify points of interest.** From the diff and file list, pick concrete components, patterns, or relationships worth understanding deeper. Run focused `code_research` queries targeting specific changed components.
 
@@ -106,4 +106,4 @@ Return these sections in order:
 
 **GitHub data unavailable.** If PR data cannot be fetched at Step 1 — no GitHub access is configured, the PR is not found, or access is denied — stop and report the error to the user. Do not attempt analysis without PR data.
 
-**chunkhound-integration unavailable.** If `mcp__plugin_chunkhound-integration_ChunkHound__code_research` is not callable at Step 3, stop and report to the user that the skill requires chunkhound-integration for architectural research. Do not produce partial analysis from GitHub data alone — architectural research is a core part of this skill's output, and GitHub-metadata-only analysis would look like a complete result but silently omit the most valuable section.
+**chunkhound-integration unavailable.** If `code_research` is not callable at Step 3, stop and report to the user that the skill requires chunkhound-integration for architectural research. Do not produce partial analysis from GitHub data alone — architectural research is a core part of this skill's output, and GitHub-metadata-only analysis would look like a complete result but silently omit the most valuable section.

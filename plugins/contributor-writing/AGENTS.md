@@ -4,7 +4,7 @@
 
 ```
 plugins/contributor-writing/
-├── .claude-plugin/plugin.json    # Plugin metadata
+├── .cursor-plugin/plugin.json    # Plugin metadata
 ├── CHANGELOG.md                  # Version history
 ├── CLAUDE.md                     # Points to AGENTS.md
 ├── AGENTS.md                     # This file

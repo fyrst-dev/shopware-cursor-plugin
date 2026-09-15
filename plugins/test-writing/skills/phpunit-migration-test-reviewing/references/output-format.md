@@ -1,6 +1,6 @@
 # Output Format
 
-Rule IDs and titles come from `mcp__plugin_test-writing_test-rules__get_rules` responses.
+Rule IDs and titles come from `get_rules` responses.
 
 ## Report Structure
 

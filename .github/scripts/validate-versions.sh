@@ -3,8 +3,7 @@
 # validate-versions.sh
 #
 # Validates that plugin versions are synchronized across all locations:
-# - plugin.json (authoritative source: .claude-plugin/plugin.json per plugin)
-# - .cursor-plugin/plugin.json (must match when present)
+# - plugin.json (authoritative source: .cursor-plugin/plugin.json per plugin)
 # - SKILL.md YAML frontmatter
 # - CHANGELOG.md latest version headers
 #
@@ -26,7 +25,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 export REPO_ROOT
-export MARKETPLACE_JSON="$REPO_ROOT/.claude-plugin/marketplace.json"
+export MARKETPLACE_JSON="$REPO_ROOT/.cursor-plugin/marketplace.json"
 
 # Source libraries
 # shellcheck source=./lib/common.sh
@@ -189,19 +188,18 @@ validate_plugin_versions() {
 
   log_info "Validating plugin: $plugin_name"
 
-  # Get authoritative version from plugin's .claude-plugin/plugin.json
+  # Get authoritative version from plugin's .cursor-plugin/plugin.json
   local plugin_version
   plugin_version=$(extract_plugin_version "$plugin_name")
 
   if [ -z "$plugin_version" ]; then
-    log_error "Plugin '$plugin_name' not found or missing .claude-plugin/plugin.json"
+    log_error "Plugin '$plugin_name' not found or missing .cursor-plugin/plugin.json"
     return 1
   fi
 
   log_info "Authoritative version: $plugin_version"
 
   # Validate each location
-  validate_cursor_plugin_version "$plugin_name" "$plugin_version" || failed=$((failed + 1))
   validate_skill_versions "$plugin_name" "$plugin_version" || failed=$((failed + 1))
   validate_changelog_version "$plugin_name" "$plugin_version" || failed=$((failed + 1))
 
@@ -295,8 +293,7 @@ main() {
           echo ""
           echo "| Location | Description |"
           echo "|----------|-------------|"
-          echo "| \`plugins/**/.claude-plugin/plugin.json\` | **Authoritative source** |"
-          echo "| \`plugins/**/.cursor-plugin/plugin.json\` | Cursor sidecar, must match |"
+          echo "| \`plugins/**/.cursor-plugin/plugin.json\` | **Authoritative source** |"
           echo "| \`plugins/**/skills/*/SKILL.md\` | YAML frontmatter: \`version: X.Y.Z\` |"
           echo "| \`plugins/**/CHANGELOG.md\` | Latest header: \`## [X.Y.Z]\` |"
         } >> "$GITHUB_STEP_SUMMARY"

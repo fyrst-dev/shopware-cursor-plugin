@@ -1,9 +1,8 @@
 ---
 name: dev-tooling-setting-up
-version: 1.1.0
-description: Use this skill when the user just installed the dev-tooling plugin and needs to configure it for a Shopware project, asks "help me set up dev-tooling" or for guidance on configuring the PHP and JavaScript tool chains, or when dev-tooling MCP tools fail with missing-config errors. Also use when reconfiguring the environment type (native, Docker, Docker Compose, Vagrant, DDEV) for the PHP and JS MCP servers. Checks prerequisites (jq), creates .mcp-php-tooling.json and .mcp-js-tooling.json, validates that the three MCP servers (PHP — PHPStan, ECS, Rector, PHPUnit; Administration JS; Storefront JS) connect, and walks through optional scope setup including the phpactor LSP.
-model: sonnet
-allowed-tools: Bash, Read, Write, Glob, AskUserQuestion
+version: 2.0.0
+description: Use this skill when the user just installed the dev-tooling plugin and needs to configure it for a Shopware project, asks "help me set up dev-tooling" or for guidance on configuring the PHP and JavaScript tool chains, or when dev-tooling MCP tools fail with missing-config errors. Also use when reconfiguring the environment type (native, Docker, Docker Compose, Vagrant, DDEV) for the PHP and JS MCP servers. Checks prerequisites (jq), creates .mcp-php-tooling.json and .mcp-js-tooling.json, validates that the three MCP servers (PHP — PHPStan, ECS, Rector, PHPUnit; Administration JS; Storefront JS) connect, and walks through optional scope setup.
+allowed-tools: Bash, Read, Write, Glob
 ---
 
 # Plugin Setup
@@ -30,14 +29,14 @@ Report findings to the user:
 - Existing config files
 - Missing config files
 
-If everything is already configured, skip to Phase 5 (Configure Permissions) — permissions are always offered.
+If everything is already configured, skip to Phase 5 (Enable MCP) — MCP enablement is always offered.
 
 ### Phase 2: Fix Prerequisites
 
 For each missing prerequisite:
 
 1. Tell the user what is missing, what requires it (the **Required by** field), and provide the install link
-2. If the prerequisite is marked as optional, ask via AskUserQuestion whether they want to install it. Skip if they decline.
+2. If the prerequisite is marked as optional, ask whether they want to install it. Skip if they decline.
 3. For required prerequisites, tell the user to install it and ask them to confirm when done
 4. After confirmation, re-run the check command to verify
 
@@ -47,36 +46,27 @@ If a required prerequisite cannot be installed, stop and explain which config fi
 
 For each config file from the guide that does not exist:
 
-1. If the file is marked `Required: No`, ask via AskUserQuestion whether the user wants to configure it. Skip if they decline.
+1. If the file is marked `Required: No`, ask whether the user wants to configure it. Skip if they decline.
 2. Read the **Setup Questions** section for this config file
-3. Ask each question one at a time via AskUserQuestion, presenting the options and descriptions exactly as written in the guide
+3. Ask each question one at a time, presenting the options and descriptions exactly as written in the guide
 4. Skip conditional questions when their condition is not met (conditions are noted in parentheses, e.g., "only if environment = docker")
 5. Build the config JSON object from the answers
 6. Present the complete config to the user and ask for confirmation
 7. Write the file to the specified location using Write
 
+Prefer `.cursor/` for optional config-directory destinations.
+
 ### Phase 4: Plugin Scope Setup (optional)
 
 Read the `## Plugin Scope Setup` section of the guide and walk the dialogue. Skip this phase entirely if the user answers No to the gate question.
 
-### Phase 5: Configure Permissions
+### Phase 5: Enable MCP
 
-Pre-approve the plugin's tools in `.claude/settings.local.json` so the user is not prompted on first use. Read the `## Permission Groups` section of the guide. Each group bundles related tools behind a single question — never ask per individual tool.
+Read the `## Permission Groups` section of the guide. Each group is an MCP server (or server set) the user should enable in Cursor.
 
-1. Check whether `.claude/settings.local.json` exists at the project root. If present, read it with Read. Otherwise treat the starting state as `{"permissions": {"allow": [], "ask": [], "deny": []}}`.
-
-2. For each group listed in the guide:
-   - Skip the group if its **Optional** condition is not met (e.g., the related config file was not created, or a dependent feature like `enable_write_server` is disabled).
-   - Skip the group silently if every pattern in it is already present in any of the `allow`, `ask`, or `deny` lists.
-   - Otherwise ask via AskUserQuestion, using the group's name and description. Offer three options — `allow`, `ask`, `deny` — with the group's **Recommended** value as the default.
-
-3. Merge the answers into the settings:
-   - Append each selected pattern to the chosen list.
-   - Deduplicate: never add a pattern that already exists anywhere in `allow`, `ask`, or `deny`.
-   - Never remove, reorder, or move existing entries between lists.
-   - Preserve every other key in the file verbatim.
-
-4. Show the user the new entries that will be added (grouped by target list) and ask for confirmation. On confirmation, Write the updated file.
+1. Tell the user to open **Customize → MCP** (or Settings → Tools & MCP).
+2. For each group listed in the guide, skip it if its **Optional** condition is not met. Otherwise ask them to enable that server and confirm when it is on.
+3. Do not write Claude Code permission files. Cursor does not use `.claude/settings.local.json`.
 
 ### Phase 6: Validate
 
@@ -88,14 +78,13 @@ Read the `## Validation` section of the guide. For each validation step:
 
 ### Phase 7: Post-Setup
 
-Read the `## Post-Setup` section of the guide. Report the remaining steps the user must take (e.g., restarting Claude Code to load MCP servers).
+Read the `## Post-Setup` section of the guide. Report the remaining steps the user must take (for example, Developer: Reload Window so MCP servers pick up new config files).
 
 ## Rules
 
-- Ask one question at a time via AskUserQuestion. Never batch multiple questions.
-- Skip phases and individual steps that are already satisfied (prerequisite installed, config file exists, permission pattern already in settings).
+- Ask one question at a time. Never batch multiple questions.
+- Skip phases and individual steps that are already satisfied (prerequisite installed, config file exists, MCP server already enabled).
 - Never proceed to config file creation if a required prerequisite it depends on is missing.
 - Always show the user the complete config content before writing it.
-- When updating `.claude/settings.local.json`, only append new entries. Never remove, reorder, or move existing permission entries between lists.
 - If validation fails, attempt to diagnose the cause before giving up.
 - Use the exact options, descriptions, defaults, and permission groups from the plugin setup guide. Do not improvise.

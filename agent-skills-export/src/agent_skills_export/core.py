@@ -52,16 +52,16 @@ def serialize_skill_md(frontmatter: dict[str, Any], body: str) -> str:
 
 
 def find_plugin_json(skill_dir: Path) -> dict[str, Any]:
-    """Walk up from skill_dir to find the nearest .claude-plugin/plugin.json."""
+    """Walk up from skill_dir to find the nearest .cursor-plugin/plugin.json."""
     current = skill_dir.resolve()
     while current != current.parent:
-        candidate = current / ".claude-plugin" / "plugin.json"
+        candidate = current / ".cursor-plugin" / "plugin.json"
         if candidate.is_file():
             result: dict[str, Any] = json.loads(candidate.read_text())
             return result
         current = current.parent
     raise FileNotFoundError(
-        f"No .claude-plugin/plugin.json found in parent directories of {skill_dir}"
+        f"No .cursor-plugin/plugin.json found in parent directories of {skill_dir}"
     )
 
 

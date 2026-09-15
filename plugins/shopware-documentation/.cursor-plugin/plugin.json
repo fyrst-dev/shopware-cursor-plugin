@@ -1,6 +1,6 @@
 {
   "name": "shopware-documentation",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Documentation-surface structuring for Shopware repositories. Size budgets, one subject per file, splitting oversized surfaces into docs/ siblings, and cross-reference integrity, backed by a measurement script.",
   "author": {
     "name": "Shopware Labs"

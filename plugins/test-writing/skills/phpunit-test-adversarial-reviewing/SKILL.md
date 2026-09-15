@@ -1,9 +1,9 @@
 ---
 name: phpunit-test-adversarial-reviewing
-version: 5.3.0
+version: 6.0.0
 description: Internal sub-skill. Do not auto-activate. Use only when explicitly invoked by name by another skill or agent.
 user-invocable: false
-allowed-tools: Glob, Grep, Read, mcp__plugin_test-writing_test-rules__get_rules
+allowed-tools: Glob, Grep, Read, get_rules
 ---
 
 # PHPUnit Adversarial Test Review
@@ -118,7 +118,7 @@ Output: prioritized list of candidate challenges, resurrections, and new finding
 
 Per candidate, highest priority first:
 
-1. Load applicable rules and detection algorithms: when `{rules}` is set, the inline text is the full rule catalog for this file's test type — select the rules relevant to the candidate finding and your lens axis. For unit tests, select those whose `Categories` include the detected A–E category; integration and migration rules carry `Categories: all`, so select by rule area, not category. The text holds every rule, so **NEVER** read, open, search, or locate a rule file by any means (no `Read`/`Grep`/`Glob`, no `get_rules`); reading the test/source code is unaffected. Otherwise call `mcp__plugin_test-writing_test-rules__get_rules(test_type={the file's test type})`, adding `test_category={category}` only for unit tests.
+1. Load applicable rules and detection algorithms: when `{rules}` is set, the inline text is the full rule catalog for this file's test type — select the rules relevant to the candidate finding and your lens axis. For unit tests, select those whose `Categories` include the detected A–E category; integration and migration rules carry `Categories: all`, so select by rule area, not category. The text holds every rule, so **NEVER** read, open, search, or locate a rule file by any means (no `Read`/`Grep`/`Glob`, no `get_rules`); reading the test/source code is unaffected. Otherwise call `get_rules(test_type={the file's test type})`, adding `test_category={category}` only for unit tests.
 2. Apply the detection algorithm against the actual code
 
 **Promotion gate**: promote a candidate to a formal challenge ONLY if a detection algorithm substantiates it. Drop candidates where the evidence doesn't hold up. This is the filter against contrarianism — intuition proposes, evidence disposes.
@@ -202,7 +202,7 @@ If the test file or source class cannot be read:
 
 ### MCP Tool Unavailability
 
-If `mcp__plugin_test-writing_test-rules__get_rules` is unavailable:
+If `get_rules` is unavailable:
 - Report error: "test-rules MCP server not available — ensure the test-writing plugin is installed and Claude Code was restarted"
 - Candidates from Phase 3 cannot be promoted without evidence — emit a `files` entry with no challenges, resurrections, or new_findings (endorsements only, if any), noting the limitation in the report handed back to the caller
 

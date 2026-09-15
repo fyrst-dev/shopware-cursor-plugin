@@ -28,8 +28,8 @@ This directory provides scripts for maintaining the AI Coding Tools repository:
 - **Update Script** (`update-issue-templates.sh`) - Simple maintenance updates
 
 **Version Management:**
-- **Validation Script** (`validate-versions.sh`) - CI/CD validation of version consistency (Claude plugin.json plus Cursor sidecar)
-- **Cursor Marketplace Script** (`validate-cursor-plugins.sh`) - CI/CD validation of `.cursor-plugin/` sidecars
+- **Validation Script** (`validate-versions.sh`) - CI/CD validation of version consistency (Cursor plugin.json)
+- **Cursor Marketplace Script** (`validate-cursor-plugins.sh`) - CI/CD validation of `.cursor-plugin/`
 - **Update Script** (`update-versions.sh`) - Synchronize versions from plugin.json (authoritative source)
 
 **Libraries:**
@@ -61,7 +61,7 @@ This directory provides scripts for maintaining the AI Coding Tools repository:
 
 - **`validate-versions.sh`** - Read-only validation for CI/CD
   - Compares versions across plugin.json, SKILL.md, and CHANGELOG.md
-  - Each plugin's `.claude-plugin/plugin.json` is the authoritative source
+  - Each plugin's `.cursor-plugin/plugin.json` is the authoritative source
   - Integrates with GitHub Actions (annotations, job summaries, outputs)
 
 - **`update-versions.sh`** - Write-only synchronization

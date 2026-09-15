@@ -24,7 +24,7 @@ CONFIG_PREFIX="php-tooling"
 
 # bats test_tags=config
 @test "CURSOR_PROJECT_DIR honors enforce_mcp_tools false" {
-    unset CLAUDE_PROJECT_DIR
+    unset CURSOR_PROJECT_DIR
     export CURSOR_PROJECT_DIR="${BATS_TEST_TMPDIR}"
     echo '{"environment": "native", "enforce_mcp_tools": false}' > "${BATS_TEST_TMPDIR}/.mcp-php-tooling.json"
     run_hook_cursor "check-php-tools.sh" "vendor/bin/phpstan analyze"
@@ -32,7 +32,7 @@ CONFIG_PREFIX="php-tooling"
 }
 
 @test "workspace_roots from hook JSON locates project config" {
-    unset CLAUDE_PROJECT_DIR
+    unset CURSOR_PROJECT_DIR
     unset CURSOR_PROJECT_DIR
     echo '{"environment": "native", "enforce_mcp_tools": false}' > "${BATS_TEST_TMPDIR}/.mcp-php-tooling.json"
     local payload
@@ -46,7 +46,7 @@ CONFIG_PREFIX="php-tooling"
     mkdir -p "${BATS_TEST_TMPDIR}/.cursor"
     echo '{"environment": "native", "enforce_mcp_tools": false}' > "${BATS_TEST_TMPDIR}/.cursor/.mcp-php-tooling.json"
     rm -f "${BATS_TEST_TMPDIR}/.mcp-php-tooling.json"
-    export CLAUDE_PROJECT_DIR="${BATS_TEST_TMPDIR}"
+    export CURSOR_PROJECT_DIR="${BATS_TEST_TMPDIR}"
     run_hook "check-php-tools.sh" "vendor/bin/phpstan analyze"
     assert_success
 }

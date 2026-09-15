@@ -1,81 +1,66 @@
 @README.md
 
-# Shopware AI Coding Tools Marketplace - Technical Reference
+# Shopware Cursor Plugin Marketplace — Technical Reference
+
+This repository is a **Cursor-only** plugin marketplace. Do not add Claude Code packaging (`.claude-plugin/`, Claude `hooks.json` PascalCase events, `mcp.json`, `.lsp.json`). The `upstream` branch keeps the historical Claude marketplace; merge **from** `upstream` into working branches when syncing, never the other way around.
 
 ## Understanding Skills
 
-**Skills are executable code, not documentation.** Markdown files in `skills/[skill-name]/` directories (SKILL.md, references/*.md) are instruction files that Claude Code reads and executes. Modifying these files changes the skill's behavior directly - treat them as you would Python or JavaScript code.
+**Skills are executable code, not documentation.** Markdown files in `skills/[skill-name]/` directories (`SKILL.md`, `references/*.md`) are instruction files the Cursor agent reads and executes. Modifying these files changes the skill's behavior directly — treat them as you would Python or JavaScript code.
 
 ## Understanding Slash Commands
 
-**Slash commands are executable code, not documentation.** Markdown files in `commands/` directories are instruction files that Claude Code reads and executes when users invoke the command. Modifying these files changes what happens when users run the slash command.
+**Slash commands are executable code, not documentation.** Markdown files in `commands/` are instruction files Cursor reads when users invoke the command. This marketplace currently has none.
 
 ## Understanding Developer Documentation
 
-**AGENTS.md, README.md, and CHANGELOG.md inside plugins are developer documentation, not runtime code.** These files are read by humans maintaining this repository. Claude Code does not load or execute them when the plugin is installed. Changes to these files affect documentation only, not plugin behavior.
+`AGENTS.md`, `README.md`, and `CHANGELOG.md` inside plugins are developer documentation, not runtime code. Cursor does not load them when the plugin is installed.
 
-Runtime files (executed by Claude Code and, where mapped, Cursor):
+Runtime files (executed by Cursor):
+
 - `skills/*/SKILL.md` and `skills/*/references/*.md`
 - `agents/*.md`
 - `commands/*.md`
-- `hooks/` (`hooks.json` for Claude Code, `cursor-hooks.json` for Cursor, plus scripts)
-- `.mcp.json` (Claude Code discovery; Cursor plugin.json points at the same file)
-- `.cursor-plugin/plugin.json` (Cursor manifest; does not replace `.claude-plugin/plugin.json`)
+- `hooks/hooks.json` and hook scripts
+- `mcp.json`
+- `.cursor-plugin/plugin.json`
 
-When modifying runtime behavior (e.g. MCP tool references, workflow instructions), edit only runtime files. When updating architectural descriptions or usage guides, edit the developer documentation.
+Repo-level `.claude/` (plugin-updating skill, commit-message overlay, template-sync rule) is **maintainer tooling** for this repository, not installed plugin packaging.
+
+When modifying runtime behavior, edit only runtime files. When updating architectural descriptions or usage guides, edit the developer documentation.
 
 ## Marketplace Architecture
 
-This marketplace uses a **distributed metadata pattern** where plugin metadata is stored in individual `plugin.json` files rather than centralized in `marketplace.json`.
+Plugin metadata lives in each plugin's `.cursor-plugin/plugin.json`. The root marketplace is a name + source registry.
 
-### Structure
 ```
-.claude-plugin/marketplace.json       # Claude Code registry (name + source)
-.cursor-plugin/marketplace.json       # Cursor registry (same plugins, Cursor fields allowed)
+.cursor-plugin/marketplace.json   # Registry (name + source)
 plugins/
   [plugin-name]/
-    .claude-plugin/plugin.json        # Claude Code metadata (authoritative version)
-    .cursor-plugin/plugin.json        # Cursor metadata (same version; hooks/mcpServers/rules overrides)
-    ...                               # Shared plugin components
+    .cursor-plugin/plugin.json    # Authoritative metadata + version
+    mcp.json                      # MCP servers (default discovery)
+    hooks/hooks.json              # Cursor camelCase events
+    skills/ agents/ commands/
 ```
 
-Do not invent a second plugin tree for Cursor. Add Cursor sidecars next to the Claude Code files and keep skills, agents, MCP servers, and hook scripts in the existing directories.
+`test-writing` must set `"rules": []` so `rules/` (the PHPUnit catalog) is not loaded as Cursor `.mdc` rules.
 
-Cursor discovery notes:
-- Skills, agents, and commands use the same default folders as Claude Code.
-- MCP: set `"mcpServers": "./.mcp.json"` in `.cursor-plugin/plugin.json`. Cursor expands `${CLAUDE_PLUGIN_ROOT}`.
-- Hooks: Claude Code reads `hooks/hooks.json` (PascalCase events). Cursor reads `hooks/cursor-hooks.json` via the Cursor manifest (`sessionStart`, `beforeShellExecution`, `postToolUse`).
-- `test-writing` must set `"rules": []` so `rules/` (the PHPUnit catalog) is not loaded as Cursor `.mdc` rules.
-- `.lsp.json` has no Cursor plugin equivalent.
-
-### marketplace.json Schema (Minimal Registry)
-
-The marketplace configuration acts as a lightweight registry pointing to plugins. Each plugin entry only needs `name` and `source`.
+### marketplace.json Schema
 
 **Required fields:**
-- `name` - Marketplace identifier in kebab-case
-- `owner` - Object with at least `name` property (optionally `email`, `url`)
-- `plugins` - Array of plugin definitions
 
-**Plugin entry structure (minimal):**
-- `name` (required) - Plugin identifier in kebab-case
-- `source` (required) - Relative path starting with `./`
+- `name` — Marketplace identifier in kebab-case
+- `owner` — Object with at least `name`
+- `plugins` — Array of `{ "name", "source" }` (`source` is a relative path starting with `./`)
 
-**Optional marketplace-level metadata:**
-- `metadata.description` - Marketplace description
-- `metadata.version` - Marketplace version
-- `metadata.pluginRoot` - Root directory for plugins
-
-### plugin.json Schema (Per-Plugin Metadata)
-
-Each plugin has its own `.claude-plugin/plugin.json` containing full metadata:
+### plugin.json Schema
 
 ```json
 {
   "name": "plugin-name",
   "version": "1.0.0",
   "description": "Plugin description",
-  "author": { "name": "Author Name", "email": "email@example.com" },
+  "author": { "name": "Author Name" },
   "license": "MIT",
   "keywords": ["tag1", "tag2"],
   "homepage": "https://github.com/...",
@@ -83,56 +68,27 @@ Each plugin has its own `.claude-plugin/plugin.json` containing full metadata:
 }
 ```
 
-**Fields:**
-- `name` (required) - Plugin identifier in kebab-case
-- `version` (required) - Semantic version string
-- `description` - Full description of functionality
-- `author` - Object with `name`, optionally `email` and `url`
-- `license` - SPDX license identifier (e.g., "MIT", "Apache-2.0")
-- `keywords` - Array of tags for discovery
-- `homepage` - Documentation URL
-- `repository` - Source code repository URL
+Omit `mcpServers` and `hooks` so Cursor discovers `mcp.json` and `hooks/hooks.json` by default.
 
 ## Plugin Component Types
 
-Claude Code plugins can include any combination of these components:
-
-- **Commands** - Custom slash commands (markdown files in `commands/`)
-- **Agents** - Specialized subagents (markdown files in `agents/`)
-- **Skills** - Model-invoked capabilities (`skills/[skill-name]/SKILL.md`)
-- **Hooks** - Event handlers (configured via `hooks/hooks.json`)
-- **MCP Servers** - External tool integration (`.mcp.json` configuration)
+- **Commands** — markdown files in `commands/`
+- **Agents** — markdown files in `agents/` (`name` + `description` frontmatter; tool policy in the body)
+- **Skills** — `skills/[skill-name]/SKILL.md` using short MCP tool names (`phpstan_analyze`, `get_rules`, `code_research`, …)
+- **Hooks** — `hooks/hooks.json` (`sessionStart`, `beforeShellExecution`, `postToolUse`)
+- **MCP Servers** — `mcp.json` with `${CURSOR_PLUGIN_ROOT}`
 
 ### MCP Server Cross-Plugin Dependencies
 
-When an MCP config plugin needs to reference server code from another plugin, **do not use relative paths** like `${CLAUDE_PLUGIN_ROOT}/../other-plugin/`. This fails because the plugin cache uses versioned subdirectories (`plugin-name/1.0.0/`).
+Do not use relative paths like `${CURSOR_PLUGIN_ROOT}/../other-plugin/`. Plugin cache uses versioned subdirectories.
 
-**Solution**: Use a wrapper script that dynamically discovers the dependency:
+Use a wrapper that discovers the dependency under the cache root, then:
 
-```bash
-#!/bin/bash
-# run-server.sh
-CACHE_ROOT="$(dirname "$(dirname "$(cd "$(dirname "$0")" && pwd)")")"
-SERVER=$(find "$CACHE_ROOT/dependency-plugin" -name "server.sh" -path "*/mcp-server/*" 2>/dev/null | sort -V | tail -1)
-[ -z "$SERVER" ] && echo '{"jsonrpc":"2.0","error":{"code":-32603,"message":"dependency-plugin not found"}}' >&2 && exit 1
-exec "$SERVER" "$@"
+```json
+"command": "${CURSOR_PLUGIN_ROOT}/run-server.sh"
 ```
 
-Reference in `.mcp.json`: `"command": "${CLAUDE_PLUGIN_ROOT}/run-server.sh"`
-
-See `plugins/dev-tooling/` for implementation.
-
-### Skills Directory Structure
-
-Skills follow this pattern:
-```
-plugin-root/
-└── skills/
-    └── skill-name/
-        └── SKILL.md
-```
-
-Example: `plugins/adr-writing/skills/adr-creating/SKILL.md`
+See `plugins/dev-tooling/` for the pattern.
 
 ## Commit Messages
 
@@ -142,151 +98,62 @@ All commit messages in this repository MUST be generated using the `commit-messa
 
 ### Adding a New Plugin
 
-1. **Create plugin directory**: `plugins/[category]/[plugin-name]/`
-2. **Create plugin.json**: `plugins/[category]/[plugin-name]/.claude-plugin/plugin.json`
-   ```json
-   {
-     "name": "plugin-name",
-     "version": "1.0.0",
-     "description": "Plugin description",
-     "author": { "name": "Author Name" },
-     "license": "MIT",
-     "keywords": ["tag1", "tag2"],
-     "homepage": "https://github.com/...",
-     "repository": "https://github.com/..."
-   }
-   ```
-3. **Add component files** (choose any combination):
-   - `commands/` - Custom slash commands
-   - `agents/` - Specialized agents
-   - `skills/[skill-name]/SKILL.md` - Model-invoked skills
-   - `hooks/` - Event handlers (hooks.json)
-   - `.mcp.json` - MCP server configuration
-4. **Register in marketplace.json**: Add the same name/source entry to both `.claude-plugin/marketplace.json` and `.cursor-plugin/marketplace.json`.
-5. **Create Cursor sidecar**: `plugins/[plugin-name]/.cursor-plugin/plugin.json` with the same `name`/`version` as the Claude manifest. Point `mcpServers` at `./.mcp.json` and `hooks` at `./hooks/cursor-hooks.json` when those components exist.
-6. **Update README.md**: Add to "Available Plugins" section
-7. **Validate**: `claude plugin validate .` and `.github/scripts/validate-cursor-plugins.sh`
+1. Create `plugins/[plugin-name]/`
+2. Create `plugins/[plugin-name]/.cursor-plugin/plugin.json`
+3. Add components (`commands/`, `agents/`, `skills/`, `hooks/hooks.json`, `mcp.json`)
+4. Register `{ "name", "source": "./plugins/..." }` in `.cursor-plugin/marketplace.json`
+5. Update README.md "Available Plugins"
+6. Validate: `.github/scripts/validate-cursor-plugins.sh` and `.github/scripts/validate-versions.sh`
 
 ### Version Management
 
-Use the `plugin-updating` skill at `.claude/skills/plugin-updating/SKILL.md` for all version bumps. It handles plugin.json, SKILL.md frontmatters, CHANGELOG updates, and setup skill synchronization. Do not bump versions manually.
+Use the `plugin-updating` skill at `.claude/skills/plugin-updating/SKILL.md`. It updates `.cursor-plugin/plugin.json`, every `SKILL.md` frontmatter, CHANGELOG entries, and template-synced setup-skill versions. Do not bump versions manually.
 
 ## Testing & Validation
 
-### Local Testing
 ```bash
-# Validate Claude marketplace structure
-claude plugin validate .
-
-# Validate Cursor marketplace sidecars
 .github/scripts/validate-cursor-plugins.sh
+.github/scripts/validate-versions.sh
 
-# Test Claude Code locally
-/plugin marketplace add /path/to/ai-coding-tools
-
-# Test a Cursor plugin locally (copy the plugin directory, then reload Cursor)
+# Local Cursor install (copy a plugin directory, then reload)
 cp -R plugins/dev-tooling ~/.cursor/plugins/local/dev-tooling
 ```
 
 ### Hook Script Testing
-```bash
-# Setup BATS (one-time)
-./.github/scripts/setup-bats.sh
 
-# Run all hook tests
+```bash
+./.github/scripts/setup-bats.sh
 .bats/bats-core/bin/bats plugin-tests/**/*.bats
 ```
 
-Tests are in `plugin-tests/<plugin-name>/` mirroring plugin structure. Tests for shared templates under `templates/mcp-shared/` live in `plugin-tests/mcp-shared/` and source the template directly, since every plugin copy is kept byte-identical to it by the template-sync CI check. The MCP protocol handler (`plugins/*/shared/mcpserver_core.sh`) is vendored from [shopwareLabs/bash-mcp-sdk](https://github.com/shopwareLabs/bash-mcp-sdk) at the release pinned in `.mcp-sdk.lock` and is tested in that repository; here, `vendor-mcp-sdk.sh --check` only verifies the copies match the pinned release.
+Tests live in `plugin-tests/<plugin-name>/`. Shared templates under `templates/mcp-shared/` are tested in `plugin-tests/mcp-shared/` and sourced from the template. The MCP protocol handler (`plugins/*/shared/mcpserver_core.sh`) is vendored from [shopwareLabs/bash-mcp-sdk](https://github.com/shopwareLabs/bash-mcp-sdk) at the release pinned in `.mcp-sdk.lock`; `vendor-mcp-sdk.sh --check` verifies the copies.
 
 ### Pre-release Checklist
-- [ ] `claude plugin validate .` passes
+
 - [ ] `.github/scripts/validate-cursor-plugins.sh` passes
-- [ ] All plugin versions updated in `.claude-plugin/plugin.json` and matching `.cursor-plugin/plugin.json` files
-- [ ] All skill versions updated in SKILL.md frontmatter (must match plugin version)
+- [ ] Plugin versions updated in `.cursor-plugin/plugin.json`
+- [ ] Skill versions in `SKILL.md` frontmatter match the plugin version
 - [ ] README.md "Available Plugins" section current
 - [ ] Issue template dropdowns current (`.github/scripts/validate-issue-templates.sh`)
 - [ ] Hook tests pass (`.bats/bats-core/bin/bats plugin-tests/**/*.bats`)
 
 ## Distribution
 
-Repository must be public with `.claude-plugin/marketplace.json` in root for GitHub distribution.
+The public repository root must contain `.cursor-plugin/marketplace.json`. Import that repo as a Cursor team marketplace, or copy plugin directories into `~/.cursor/plugins/local/<name>/`.
 
 ## Agent Skills Export
 
-Some skills are exported as portable packages following the [Agent Skills](https://agentskills.io) specification for use in Cursor, Codex, Gemini, and other compatible tools. Skills opt in via an empty `.agent-skills` marker file placed next to `SKILL.md`.
-
-### Validation
-
-When placing an `.agent-skills` marker on a skill or modifying a skill that has one, validate the exported output:
+Some skills are exported as portable packages following the [Agent Skills](https://agentskills.io) specification. Skills opt in via an empty `.agent-skills` marker file next to `SKILL.md`.
 
 ```bash
-# Build and validate (from repo root)
 uv run --project agent-skills-export build-agent-skill <skill-dir> /tmp/agent-skills-out
 uv run --project agent-skills-export skills-ref validate /tmp/agent-skills-out/<skill-name>
 ```
 
-Fix any validation errors before committing.
+## What cannot exist as Cursor-only
 
-## Plugin Usage Directives
-
-Directives for using official Anthropic plugins when developing this marketplace. Follow the thin subagent pattern for context isolation.
-
-### Thin Subagent Invocation Pattern
-
-When invoking plugin-dev skills, use the Task tool for context isolation:
-
-```
-Task(subagent_type="skill-reviewer", prompt="Review the skill at [path]")
-```
-
-This provides:
-- **Context isolation** - Skill runs in separate context window
-- **Role specification** - Agent focuses solely on skill task
-- **Clean output** - Results returned without polluting main context
-
-### Plugin Development (plugin-dev)
-
-**Proactive Usage Rules:**
-- ALWAYS use `/plugin-dev:create-plugin` when creating new plugins for this marketplace
-- ALWAYS invoke `skill-reviewer` agent after creating or modifying any skill
-- ALWAYS invoke `plugin-validator` agent before committing plugin changes
-
-**Skill Invocation (via Task tool for isolation):**
-
-| Skill | When to Invoke | Pre-validation |
-|-------|---------------|----------------|
-| `plugin-dev:skill-development` | Creating/improving skills | Verify skills/ directory exists |
-| `plugin-dev:agent-development` | Creating/improving agents | Verify agents/ directory exists |
-| `plugin-dev:command-development` | Creating slash commands | Verify commands/ directory exists |
-| `plugin-dev:hook-development` | Adding hooks | Verify hooks/ directory structure |
-| `plugin-dev:mcp-integration` | Configuring MCP servers | Verify .mcp.json path |
-| `plugin-dev:plugin-structure` | Setting up plugin architecture | Verify plugin root path |
-| `plugin-dev:plugin-settings` | Adding plugin configuration | Verify .claude/ directory exists |
-
-**Agent Invocation (via Task tool):**
-
-| Agent | When to Invoke | Scope Constraints |
-|-------|---------------|-------------------|
-| `skill-reviewer` | After creating/modifying skills | Read-only analysis, no edits |
-| `agent-creator` | When user requests new agent | Generate config only, user applies |
-| `plugin-validator` | Before commits/publishing | Validation only, report issues |
-
-### Feature Development (feature-dev)
-
-**Proactive Usage Rules:**
-- Use `/feature-dev` when implementing significant new features
-- Use `code-explorer` agent to understand existing patterns before making changes
-- Use `code-architect` agent for non-trivial implementation decisions
-- Use `code-reviewer` agent after completing significant code changes
-
-**Command:**
-- `/feature-dev [description]` - 7-phase guided workflow: Discovery → Exploration → Clarification → Architecture → Implementation → Review → Integration
-
-**Agent Invocation (via Task tool):**
-
-| Agent | When to Invoke | Scope Constraints |
-|-------|---------------|-------------------|
-| `code-explorer` | Research before changes | Read-only exploration |
-| `code-architect` | Architectural decisions | Design only, no implementation |
-| `code-reviewer` | After significant changes | Review only, suggest improvements |
+- Plugin LSP (`.lsp.json` / phpactor) — use an editor PHP language server
+- Claude Workflows — team review uses Cursor `Task`
+- Claude Agent SDK embedding — chat skills only
+- Claude agent frontmatter (`tools`, `model`, `color`, `skills`, `permissionMode`)
+- `CURSOR_PLUGIN_DATA` as a Cursor-provided directory — use `CURSOR_PLUGIN_DATA` or `<workspace>/.cursor/test-writing`

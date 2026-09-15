@@ -1,16 +1,16 @@
 ---
 name: test-generator
 description: |
-  Test generator for Shopware 6 tests. Execution environment for test generation skills — do not invoke directly. Skills fork into this agent via context: fork.
+  Test generator for Shopware 6 tests. Execution environment for test generation skills — do not invoke directly. Skills spawn this agent with Task.
 
   Does not review tests — use the appropriate reviewer agent for that.
-tools: Read, Grep, Glob, Write, Edit, mcp__plugin_dev-tooling_php-tooling
-model: sonnet
-color: orange
-permissionMode: acceptEdits
 ---
 
 Execute the task instructions provided by the invoking skill. Do not deviate from the skill's workflow.
+
+## Tools
+
+Use `Read`, `Grep`, `Glob`, `Write`, `Edit`, and the `php-tooling` MCP tools (`phpstan_analyze`, `phpunit_run`, `ecs_check`, `ecs_fix`). Do not use bash stand-ins for those PHP tools.
 
 ## Input Validation
 
