@@ -42,7 +42,7 @@ Plugin scopes (primary):
 
 Infrastructure scopes:
 
-- Files in `hooks/`, plugin hook directories, or any `hooks.json` resolve to scope = `hooks`.
+- Files in `hooks/`, plugin hook directories, `.cursor/hooks.json`, `.cursor/hooks/`, or any `hooks.json` resolve to scope = `hooks`.
 - `.cursor-plugin/marketplace.json` or any `plugin.json` across plugins resolves to scope = `marketplace`.
 - `.github/workflows/` or `.github/scripts/` resolves to scope = `ci`.
 - `.github/ISSUE_TEMPLATE/` or `.github/*.md` resolves to scope = `github`.

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "command": ".cursor/hooks/inject-commit-message-overlay.sh",
+        "timeout": 5
+      }
+    ]
+  }
+}

@@ -25,7 +25,7 @@ Runtime files (executed by Cursor):
 - `mcp.json`
 - `.cursor-plugin/plugin.json`
 
-Repo-level `.claude/` (plugin-updating skill, commit-message overlay, template-sync rule) is **maintainer tooling** for this repository, not installed plugin packaging.
+Repo-level `.cursor/` (skills, rules, and project hooks) is **maintainer tooling** for this repository, not installed plugin packaging.
 
 When modifying runtime behavior, edit only runtime files. When updating architectural descriptions or usage guides, edit the developer documentation.
 
@@ -34,6 +34,7 @@ When modifying runtime behavior, edit only runtime files. When updating architec
 Plugin metadata lives in each plugin's `.cursor-plugin/plugin.json`. The root marketplace is a name + source registry.
 
 ```
+.cursor/                          # Maintainer skills, rules, project hooks
 .cursor-plugin/marketplace.json   # Registry (name + source)
 plugins/
   [plugin-name]/
@@ -92,7 +93,7 @@ See `plugins/dev-tooling/` for the pattern.
 
 ## Commit Messages
 
-All commit messages in this repository MUST be generated using the `commit-message-writer:writing-commit-messages` skill from the `commit-message-writer` plugin (installed via the `itb-ai-tools` marketplace). Do not write commit messages manually. Project-specific type and scope rules ride on top of the plugin via the overlay at `.claude/hook-contexts/writing-commit-messages.md`, delivered through the hook entries in `.claude/settings.json`.
+All commit messages in this repository MUST be generated using the `commit-message-writer:writing-commit-messages` skill from the `commit-message-writer` plugin (installed via the `itb-ai-tools` marketplace). Do not write commit messages manually. Project-specific type and scope rules ride on top of the plugin via the overlay at `.cursor/hooks/writing-commit-messages.md`, delivered through `.cursor/hooks.json` and `.cursor/rules/writing-commit-messages.mdc`.
 
 ## Development Workflow
 
@@ -107,7 +108,7 @@ All commit messages in this repository MUST be generated using the `commit-messa
 
 ### Version Management
 
-Use the `plugin-updating` skill at `.claude/skills/plugin-updating/SKILL.md`. It updates `.cursor-plugin/plugin.json`, every `SKILL.md` frontmatter, CHANGELOG entries, and template-synced setup-skill versions. Do not bump versions manually.
+Use the `plugin-updating` skill at `.cursor/skills/plugin-updating/SKILL.md`. It updates `.cursor-plugin/plugin.json`, every `SKILL.md` frontmatter, CHANGELOG entries, and template-synced setup-skill versions. Do not bump versions manually.
 
 ## Testing & Validation
 
@@ -156,4 +157,5 @@ uv run --project agent-skills-export skills-ref validate /tmp/agent-skills-out/<
 - Claude Workflows — team review uses Cursor `Task`
 - Claude Agent SDK embedding — chat skills only
 - Claude agent frontmatter (`tools`, `model`, `color`, `skills`, `permissionMode`)
+- A repo-level `.claude/` tree for maintainers — skills, rules, and hooks live under `.cursor/`
 - `CURSOR_PLUGIN_DATA` as a Cursor-provided directory — use `CURSOR_PLUGIN_DATA` or `<workspace>/.cursor/test-writing`

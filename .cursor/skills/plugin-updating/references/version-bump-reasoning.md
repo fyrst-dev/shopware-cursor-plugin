@@ -4,7 +4,7 @@ Detailed rules for determining MAJOR, MINOR, or PATCH version bumps. All plugins
 
 ## Public API Definition
 
-A Claude Code plugin's "public API" — the interfaces consumers depend on:
+A Cursor plugin's "public API" — the interfaces consumers depend on:
 
 | Surface | Examples |
 |---------|----------|

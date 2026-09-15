@@ -4,7 +4,7 @@
 #
 # Validates that template→copy pairs stay synchronized. Pairs are supplied as
 # CLI arguments so the authoritative list lives in the caller (the workflow
-# and, for humans, .claude/rules/template-sync.md).
+# and, for humans, .cursor/rules/template-sync.mdc).
 #
 # Usage:
 #   ./validate-template-sync.sh [--github-actions] <mode> <template> <copy> [<mode> <template> <copy> ...]
@@ -174,7 +174,7 @@ if [ "$failed" -eq 0 ]; then
 fi
 
 log_error "$failed template drift(s) detected"
-log_info "Fix: update the template first, then copy into every consumer listed in .claude/rules/template-sync.md"
+log_info "Fix: update the template first, then copy into every consumer listed in .cursor/rules/template-sync.mdc"
 
 if [ "$GITHUB_ACTIONS_MODE" = true ]; then
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
@@ -187,7 +187,7 @@ if [ "$GITHUB_ACTIONS_MODE" = true ]; then
       echo ""
       echo "**$failed drift(s) detected** between \`templates/\` and their plugin copies."
       echo ""
-      echo "See \`.claude/rules/template-sync.md\` for the mapping and workflow."
+      echo "See \`.cursor/rules/template-sync.mdc\` for the mapping and workflow."
     } >> "$GITHUB_STEP_SUMMARY"
   fi
 fi

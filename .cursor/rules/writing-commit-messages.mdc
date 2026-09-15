@@ -1,0 +1,6 @@
+---
+description: Project-specific conventional-commit type and scope overlay for this marketplace. Use when writing or amending a git commit message.
+alwaysApply: false
+---
+
+Read and apply `.cursor/hooks/writing-commit-messages.md` when composing a commit message for this repository. Those rows refine the commit-message-writer skill; they do not replace it.

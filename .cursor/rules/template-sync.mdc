@@ -1,14 +1,7 @@
 ---
-paths:
-  - "templates/**"
-  - "plugins/*/shared/mcpserver_core.sh"
-  - "plugins/*/shared/config.sh"
-  - "plugins/*/shared/environment.sh"
-  - "plugins/*/shared/docker-compose.sh"
-  - "plugins/*/hooks/scripts/lib/common.sh"
-  - "plugins/*/SETUP.md"
-  - "plugins/plugin-setup/skills/*/SKILL.md"
-  - "plugins/plugin-setup/skills/*/references/plugin-setup.md"
+description: Template copies must be edited at the source and synced to every consumer. Use when touching templates/ or a listed consumer copy.
+globs: templates/**,plugins/*/shared/mcpserver_core.sh,plugins/*/shared/config.sh,plugins/*/shared/environment.sh,plugins/*/shared/docker-compose.sh,plugins/*/hooks/scripts/lib/common.sh,plugins/*/SETUP.md,plugins/plugin-setup/skills/*/SKILL.md,plugins/plugin-setup/skills/*/references/plugin-setup.md
+alwaysApply: false
 ---
 
 # Template Sync Enforcement

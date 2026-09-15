@@ -44,13 +44,15 @@ CLAUDE.md
 CLAUDE.local.md
 AGENTS.local.md
 
-# Claude Code local config (but track skills and project rules)
-.claude/*
-!.claude/settings.json
-!.claude/skills/
-!.claude/rules/
-!.claude/hook-contexts/
-!.claude/extensions/
+# Claude Code leftover local files
+.claude/
+
+# Cursor local files (track committed skills, rules, and project hooks)
+.cursor/*
+!.cursor/skills/
+!.cursor/rules/
+!.cursor/hooks.json
+!.cursor/hooks/
 
 # BATS testing framework (installed locally via .github/scripts/setup-bats.sh)
 .bats/

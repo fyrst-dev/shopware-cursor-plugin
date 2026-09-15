@@ -1,14 +1,13 @@
 ---
 name: plugin-updating
 description: Use this skill when the user asks to bump, update, or release a new version of a plugin in the Shopware AI Coding Tools marketplace — phrases like "bump test-writing to 3.8.0", "release a patch for dev-tooling", "update the plugin version". Handles synchronized version bumps across `plugin.json` and every `SKILL.md` frontmatter inside the plugin, plus CHANGELOG entries and template-synced setup-skill version syncing where applicable.
-allowed-tools: Read, Edit, Write, Bash, Glob, Grep
 ---
 
 # Plugin Updating
 
 Handles plugin version management for the Shopware AI Coding Tools marketplace.
 
-Template synchronization for `templates/plugin-setup/` and shared shell scripts is covered by `.claude/rules/template-sync.md`, which activates automatically when a template or consumer file is touched.
+Template synchronization for `templates/plugin-setup/` and shared shell scripts is covered by `.cursor/rules/template-sync.mdc`, which activates automatically when a template or consumer file is touched.
 
 ## Plugin Inventory
 
@@ -68,7 +67,7 @@ For detailed triggers, public API definitions, and edge cases see `references/ve
 Run the bundled helper script:
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/bump-plugin-version.sh" <plugin> <new-version>
+bash .cursor/skills/plugin-updating/scripts/bump-plugin-version.sh <plugin> <new-version>
 ```
 
 It updates `plugins/<plugin>/.cursor-plugin/plugin.json` (surgical text replacement that preserves formatting) and rewrites the `version:` field in every `plugins/<plugin>/skills/*/SKILL.md` frontmatter. Do not edit these files by hand.
@@ -87,7 +86,7 @@ Do not commit. The user will commit when ready.
 
 ### Step 6: Sync the setup skill version (if applicable)
 
-If the plugin has a `SETUP.md`, the `version` field in `plugins/<plugin>/skills/setting-up/SKILL.md` must match the new plugin version. Update it in place — leave the rest of the frontmatter and body alone. See `.claude/rules/template-sync.md` for the body-sync workflow.
+If the plugin has a `SETUP.md`, the `version` field in `plugins/<plugin>/skills/setting-up/SKILL.md` must match the new plugin version. Update it in place — leave the rest of the frontmatter and body alone. See `.cursor/rules/template-sync.mdc` for the body-sync workflow.
 
 ## SETUP.md Format Reference
 

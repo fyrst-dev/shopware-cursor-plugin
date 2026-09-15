@@ -225,10 +225,10 @@ Both handle environment-specific execution (native/docker/docker-compose/vagrant
 | Modify shared hook logic | `hooks/scripts/lib/common.sh` | - | `parse_hook_input()`, `load_mcp_config()`, `block_tool()` |
 | Disable hook enforcement | `.mcp-*-tooling.json` | - | `enforce_mcp_tools: false` |
 | Adjust hook timeout | `hooks/hooks.json` | - | `timeout` field (default: 5s) |
-| Add config location | `templates/mcp-shared/config.sh` (edit template, sync per `.claude/rules/template-sync.md`) | - | `CONFIG_LOCATIONS` array |
-| Add environment type | `templates/mcp-shared/environment.sh` (edit template, sync per `.claude/rules/template-sync.md`) | - | `wrap_command()`, `wrap_npm_command()` |
-| Configure docker-compose | `templates/mcp-shared/docker-compose.sh` (edit template, sync per `.claude/rules/template-sync.md`) | `templates/mcp-shared/environment.sh` | `_compose_*()`, call-time resolution |
-| Add noise filter pattern | `templates/mcp-shared/environment.sh` (edit template, sync per `.claude/rules/template-sync.md`) | - | `ENV_NOISE_PATTERNS` array, `_filter_env_noise()` |
+| Add config location | `templates/mcp-shared/config.sh` (edit template, sync per `.cursor/rules/template-sync.mdc`) | - | `CONFIG_LOCATIONS` array |
+| Add environment type | `templates/mcp-shared/environment.sh` (edit template, sync per `.cursor/rules/template-sync.mdc`) | - | `wrap_command()`, `wrap_npm_command()` |
+| Configure docker-compose | `templates/mcp-shared/docker-compose.sh` (edit template, sync per `.cursor/rules/template-sync.mdc`) | `templates/mcp-shared/environment.sh` | `_compose_*()`, call-time resolution |
+| Add noise filter pattern | `templates/mcp-shared/environment.sh` (edit template, sync per `.cursor/rules/template-sync.mdc`) | - | `ENV_NOISE_PATTERNS` array, `_filter_env_noise()` |
 | Modify protocol | upstream `shopwareLabs/bash-mcp-sdk` (release pinned in `.mcp-sdk.lock`; never edit `shared/mcpserver_core.sh` in place) | - | `process_request()`, `handle_*()` |
 | Update tool schemas | `mcp-server-*/tools.json` | - | JSON Schema Draft 7 |
 | Register new server | `mcp.json` | - | `mcpServers` object |

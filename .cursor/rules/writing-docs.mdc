@@ -1,3 +1,8 @@
+---
+description: House documentation contracts for this marketplace. Use when writing or editing README, AGENTS.md, CHANGELOG, or other developer docs.
+alwaysApply: false
+---
+
 ## Named-value assignments
 
 - `docs.surfaces` =
@@ -6,9 +11,9 @@
   | `README.md` | Marketplace pitch, quick start, the plugin index, third-party-integration and license notices | Emoji-prefixed H2s; one `### <plugin>` per plugin with install command, scope, prerequisites, and a link to the plugin README | enforced |
   | `AGENTS.md` | Project jargon; marketplace architecture; the `marketplace.json` and `plugin.json` schemas; plugin component types; the runtime-file vs developer-documentation split; the add-a-plugin workflow; testing and validation commands | `@README.md` first line, then H2 sections | enforced |
   | `SECURITY.md` | Vulnerability reporting | GitHub default | enforced |
-  | `docs/claude-code-setup.md` | The recommended Claude Code configuration recipe | Numbered emoji H2s, prose plus config blocks | enforced |
+  | `docs/cursor-setup.md` | The recommended Cursor configuration recipe | Numbered emoji H2s, prose plus config blocks | enforced |
   | `docs/rules/README.md` | The index of the published rule-file catalog and the rule-vs-skill decision test | Emoji-prefixed H2s plus the catalog tables | enforced |
-  | `docs/rules/<rule>.md` | One behavioral rule each, self-contained for copying into `~/.claude/rules/` | Decision Test, Core Rules, Banned Patterns, Red Flags | enforced |
+  | `docs/rules/<rule>.md` | One behavioral rule each, self-contained for copying into `.cursor/rules/` or `~/.cursor/rules/` | Decision Test, Core Rules, Banned Patterns, Red Flags | enforced |
   | `templates/README.md` | The template-to-consumer mapping, the sync procedure, and what is deliberately not templated | H2 per topic plus a Directories table | enforced |
   | `plugin-tests/README.md` | BATS setup and run commands, the tag vocabulary, the helper and test skeletons, the test-tree layout | Emoji-prefixed H2s | enforced |
   | `plugin-tests/AGENTS.md` | LLM navigation for the test tree: helper contracts, `REPO_ROOT` resolution, hook exit codes, when-to-modify routing | `@README.md` plus H2 sections | enforced |
@@ -33,7 +38,7 @@
 
 Classify the file before naming a surface. Only developer documentation is in scope; read `AGENTS.md` §Understanding Developer Documentation for the split this repository draws.
 
-STOP and use the owning authoring workflow when the path matches runtime instruction content — Markdown that Claude Code reads and executes, not documentation: `plugins/*/skills/**`, `plugins/*/agents/*.md`, `plugins/*/commands/*.md`, `plugins/*/hooks/prompts/*.md`, `plugins/*/references/*.md`, `plugins/*/rules/**`, `templates/plugin-setup/SKILL.md`, `.claude/skills/**`, `.claude/rules/*.md`, `.claude/hook-contexts/*.md`.
+STOP and use the owning authoring workflow when the path matches runtime instruction content — Markdown that Cursor reads and executes, not documentation: `plugins/*/skills/**`, `plugins/*/agents/*.md`, `plugins/*/commands/*.md`, `plugins/*/hooks/prompts/*.md`, `plugins/*/references/*.md`, `plugins/*/rules/**`, `templates/plugin-setup/SKILL.md`, `.cursor/skills/**`, `.cursor/rules/*.mdc`, `.cursor/hooks/**`.
 
 STOP when the path is test data: `plugin-tests/**/fixtures/**`. That content is fixed by the assertions that read it.
 

@@ -36,12 +36,12 @@ When a fourth plugin gains a `SETUP.md`:
 1. Create `plugins/<source-plugin>/SETUP.md` in the source plugin (source of truth)
 2. Add `skills/<source-plugin>-setting-up/SKILL.md` here with plugin-specific frontmatter (`name`, `description`) and the body from `templates/plugin-setup/SKILL.md`
 3. Create `skills/<source-plugin>-setting-up/references/plugin-setup.md` as a copy of the source plugin's `SETUP.md`
-4. Add two template-sync mappings (one `body` for `SKILL.md`, one `identical` for `references/plugin-setup.md`) in both `.claude/rules/template-sync.md` and `.github/workflows/validate.yml`
+4. Add two template-sync mappings (one `body` for `SKILL.md`, one `identical` for `references/plugin-setup.md`) in both `.cursor/rules/template-sync.mdc` and `.github/workflows/validate.yml`
 5. Update this plugin's `README.md` skills table and the root `README.md` plugin-setup section
 
 ## Key Design Decisions
 
-- **Template-synced**: Each skill's `SKILL.md` body and `references/plugin-setup.md` are kept in sync via `.github/scripts/validate-template-sync.sh`. The authoritative mapping lives in `.claude/rules/template-sync.md` and the workflow step.
+- **Template-synced**: Each skill's `SKILL.md` body and `references/plugin-setup.md` are kept in sync via `.github/scripts/validate-template-sync.sh`. The authoritative mapping lives in `.cursor/rules/template-sync.mdc` and the workflow step.
 - **Skill versions match the plugin-setup plugin version**, not the source plugin's version. The `validate-versions.sh` check expects each skill's `version` frontmatter to match `.cursor-plugin/plugin.json`. Bump skills and `plugin.json` together when plugin-setup changes.
 - **SETUP.md stays in the source plugin**, not in this plugin. The source plugin owns its setup procedure. This plugin only hosts the interactive skills that consume those guides.
 - **Plugin-specific descriptions** in each skill's frontmatter drive auto-routing. The body is identical, but the description must mention the source plugin name and likely user phrasing ("set up dev-tooling", "set up chunkhound-integration") so the right skill activates.

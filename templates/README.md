@@ -15,19 +15,19 @@ Source of truth for shared code copied into plugins. Plugin copies must be byte-
 1. Edit the file in `templates/`
 2. Copy to every consumer plugin listed in the table above
 3. Verify with `diff` — copies must be byte-identical
-4. A project-level Claude rule (`.claude/rules/template-sync.md`) activates when plugin copies are touched and reminds to sync from templates
+4. A project-level Cursor rule (`.cursor/rules/template-sync.mdc`) activates when plugin copies are touched and reminds to sync from templates
 
 ## Adding a shared file
 
 1. Add the file to the appropriate `templates/` subdirectory
 2. Copy to all consumer plugins
-3. Update the mapping in `.claude/rules/template-sync.md`
+3. Update the mapping in `.cursor/rules/template-sync.mdc`
 4. Update the table in this README
 
 ## Adding a consumer plugin
 
 1. Copy all relevant template files into the plugin
-2. Add the plugin to the mapping in `.claude/rules/template-sync.md`
+2. Add the plugin to the mapping in `.cursor/rules/template-sync.mdc`
 3. Update the table in this README
 
 ## Not templated
