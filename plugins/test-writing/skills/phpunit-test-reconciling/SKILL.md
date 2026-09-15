@@ -3,7 +3,6 @@ name: phpunit-test-reconciling
 version: 6.0.0
 description: Internal sub-skill. Do not auto-activate. Use only when explicitly invoked by name by another skill or agent.
 user-invocable: false
-allowed-tools: Read, Glob, Grep, get_rules
 ---
 
 # PHPUnit Test Review Reconciling

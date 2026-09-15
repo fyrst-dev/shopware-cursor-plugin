@@ -19,7 +19,7 @@
     "log_file": {
       "type": "string",
       "description": "Additional log file path. Relative paths resolve against the project root. The default server.log continues to be written; this file is strictly additive.",
-      "examples": [".claude/mcp-php-tooling.log", "/tmp/mcp-debug.log"]
+      "examples": [".cursor/mcp-php-tooling.log", "/tmp/mcp-debug.log"]
     },
     "docker": {
       "type": "object",

@@ -152,11 +152,8 @@ Never cite a line number.
 <Dir>/
 ├── README.md   title, orienting paragraph, explanation, index rows into docs/
 ├── AGENTS.md   symbol index, constraints, Navigation, the README pointer line
-├── CLAUDE.md   @AGENTS.md
 └── docs/       configuration reference, one subject per file
 ```
-
-`CLAUDE.md` contains `@AGENTS.md` and nothing else, unless project extension content names a module-root exception (a work-in-progress status line, for example).
 
 `AGENTS.md` never imports `README.md`. An `@` import inlines its target in full, so importing human prose pays for it in every session. `AGENTS.md` points at the README by name instead, with this line verbatim:
 

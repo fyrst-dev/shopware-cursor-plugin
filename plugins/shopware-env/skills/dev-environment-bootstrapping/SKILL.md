@@ -1,9 +1,7 @@
 ---
 name: dev-environment-bootstrapping
 version: 2.0.0
-model: sonnet
 description: Use this skill when the user asks to bootstrap, set up, create, or initialize a Shopware development environment from scratch — phrases like "set up a Shopware dev environment", "clone and install Shopware", "initialize a Shopware plugin project", "bootstrap Shopware and a new plugin called X", "get a fresh Shopware instance running". Orchestrates the full first-run flow — detects the current state of a Shopware checkout, proposes a numbered action plan, confirms with the user, then executes dependency installation, database setup, plugin activation, and frontend builds via the lifecycle-tooling MCP server. Hands off to dev-tooling setup when the environment is running.
-allowed-tools: Bash, Read, Glob, Write, install_dependencies, database_install, database_reset, testdb_prepare, frontend_build_admin, frontend_build_storefront, plugin_create, plugin_setup
 ---
 
 # Shopware Dev Environment Bootstrapping

@@ -5,7 +5,6 @@ description: Internal sub-skill. Do not auto-activate. Use only when explicitly 
 user-invocable: false
 context: fork
 agent: test-writing:test-generator
-allowed-tools: Read, Grep, Glob, Write, Edit, php-tooling
 ---
 
 # PHPUnit Test Generation

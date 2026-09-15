@@ -1,11 +1,11 @@
 #!/bin/bash
-# Claude Code Hook: Dev Tooling MCP Enforcer (Administration JavaScript)
+# Cursor hook: Dev Tooling MCP Enforcer (Administration JavaScript)
 # =======================================================================
 # Blocks Administration JS dev tool bash commands in favor of MCP tools.
 #
 # Exit codes:
 #   0 - Command allowed
-#   2 - Command blocked (message shown to Claude)
+#   2 - Command blocked (message shown to the agent)
 
 set -euo pipefail
 

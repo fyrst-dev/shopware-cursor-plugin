@@ -1,11 +1,11 @@
 #!/bin/bash
-# Claude Code Hook: Shopware Lifecycle MCP Enforcer
+# Cursor hook: Shopware Lifecycle MCP Enforcer
 # ==================================================
 # Blocks Shopware lifecycle bash commands in favor of MCP tools.
 #
 # Exit codes:
 #   0 - Command allowed
-#   2 - Command blocked (message shown to Claude)
+#   2 - Command blocked (message shown to the agent)
 
 set -euo pipefail
 

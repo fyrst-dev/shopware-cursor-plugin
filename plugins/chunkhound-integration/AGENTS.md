@@ -53,14 +53,14 @@ This plugin provides:
 | Task | Primary File | Key Concepts |
 |------|--------------|--------------|
 | Change skill auto-activation triggers | `skills/researching-code/SKILL.md` | Frontmatter `description` |
-| Change skill tool surface | `skills/researching-code/SKILL.md` | Frontmatter `allowed-tools` — `Read`, `Bash(bash:*)` for the bundled sweep script, scoped `Bash(ugrep:*)` for Markdown-confined doc locating, `Bash(bfs:*)` for path enumeration, and the three ChunkHound MCP tools |
+| Change skill tool surface | `skills/researching-code/SKILL.md` | Skill body — `Read`, the bundled sweep script, scoped `ugrep`/`bfs` for documentation locating and path enumeration, and the three ChunkHound MCP tools |
 | Change depth-detection or primitive-directive rules | `skills/researching-code/SKILL.md` | Step 1 — explicit directives (depth and primitive), question shape, default; forced `code_research` mode |
 | Change per-depth research procedure | `skills/researching-code/SKILL.md` | Step 3 — Surface / Broad / Deep workflows |
 | Change `code_research` vs `search` routing | `skills/researching-code/SKILL.md` | Step 3 primitive catalog — ChunkHound opens every code search (semantic preferred over regex); the bundled sweep script (`scripts/sweep.sh`) is a complement that only closes one and is the sole source of counts entering findings; `Read` and `bfs` stand outside the rule because paths are not code |
 | Change pre-flight gates, warnings, failure shape, or setup diagnostic | `skills/researching-code/references/pre-flight.md` | Hard gates list, embeddings gate (conditional on plan using semantic / `code_research`), warnings list, failure return shape, setup diagnostic (installation/config/database checks + remediation) |
 | Modify synthesis output format | `skills/researching-code/SKILL.md` | Step 4 — Overview / Key Components / Architecture Insights / Recommendations / Documentation evidence / Coverage caveats (unsupported-language gaps + documentation index status + index health notes) |
 | Change documentation handling (consultation, drift corroboration, doc reporting) | `skills/researching-code/references/documentation-scope.md` | Consumed by the Step 3 `Documentation scope` rule; feeds the Step 4 `Documentation evidence` section and the `Documentation index status` caveat. Code stays primary evidence; doc claims are labeled corroborated / uncorroborated / contradicted |
-| Modify subagent invocation trigger or model | `agents/code-researcher.md` | Frontmatter `description` routes invocation; `model: sonnet` is pinned because the agent dispatches to the skill rather than reasoning itself (the agent body is a thin wrapper around the skill) |
+| Modify subagent invocation trigger | `agents/code-researcher.md` | Frontmatter `description` routes invocation; the body is a thin wrapper around the skill |
 | Modify sequential-dispatch directive | `hooks/prompts/sequential-chunkhound-directives.md` | Static prompt emitted by sessionStart as `additional_context`; covers the `code-researcher` agent and any other subagent that calls `search` or `code_research`. Tone matches the other plugins' MCP-tool directives |
 | Sync supported-languages list with upstream ChunkHound | `skills/researching-code/references/supported-languages.md` | Mirror the `Language` enum (`chunkhound/core/types/common.py`) and `EXTENSION_TO_LANGUAGE` (`chunkhound/parsers/parser_factory.py`) from `chunkhound/chunkhound` on GitHub |
 | Add config discovery location | `scripts/run-chunkhound.sh` | `CONFIG_LOCATIONS` array |
@@ -136,17 +136,7 @@ mcp.json → run-chunkhound.sh → chunkhound mcp [--config path]
 
 ## Integration with Other Plugins
 
-Other plugins can reference ChunkHound tools:
-
-```yaml
----
-tools:
-  - code_research
-  - search
----
-
-Use code_research to understand the authentication architecture before implementing changes.
-```
+Other plugins can call the ChunkHound MCP tools by their short names (`code_research`, `search`, `daemon_status`).
 
 ## External Dependencies
 

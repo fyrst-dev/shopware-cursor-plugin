@@ -6,7 +6,6 @@ description: >
   the required configuration files, and validates that MCP tools are
   correctly wired. Use when the plugin is first installed or when tools fail
   with missing-config errors.
-allowed-tools: Bash, Read, Write, Glob
 ---
 
 # Plugin Setup

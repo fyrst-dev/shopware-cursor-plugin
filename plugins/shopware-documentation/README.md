@@ -1,6 +1,6 @@
 # Shopware Documentation
 
-Structuring skill for Markdown documentation surfaces in Shopware repositories. Keeps every `README.md`, `AGENTS.md`, `CLAUDE.md`, and `docs/` sibling at one subject, one content class, and a bounded amount of reading — measured, not estimated.
+Structuring skill for Markdown documentation surfaces in Shopware repositories. Keeps every `README.md`, `AGENTS.md`, and `docs/` sibling at one subject, one content class, and a bounded amount of reading — measured, not estimated. Also measures a customer `CLAUDE.md` when one exists.
 
 ## 📦 Installation
 

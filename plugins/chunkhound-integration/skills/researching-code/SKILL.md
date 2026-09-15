@@ -2,14 +2,6 @@
 name: researching-code
 version: 4.0.0
 description: Use this skill when the user asks an architectural or semantic question about a codebase — phrases like "how does X work?", "what's the architecture?", "help me understand this codebase", "find all components that use Y", "trace the data flow from A to B", "where is feature Z handled", "I'm new to this code, where do I start" — or whenever they mention design patterns, component relationships, multi-file dependency tracing, or onboarding to unfamiliar code. Activate even when the user does not explicitly mention "semantic search" or "ChunkHound".
-allowed-tools:
-  - Read
-  - Bash(bfs:*)
-  - Bash(ugrep:*)
-  - Bash(bash:*)
-  - daemon_status
-  - code_research
-  - search
 ---
 
 # Researching Code

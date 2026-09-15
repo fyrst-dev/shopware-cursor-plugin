@@ -42,7 +42,7 @@ Create `.chunkhound.json` in one of the supported locations.
     "api_key": "YOUR_VOYAGEAI_KEY"
   },
   "llm": {
-    "provider": "claude-code-cli"
+    "provider": "anthropic"
   }
 }
 ```
@@ -56,9 +56,9 @@ Create `.chunkhound.json` in one of the supported locations.
     "path": ".cursor/.chunkhound"
   },
   "llm": {
-    "provider": "claude-code-cli",
-    "utility_model": "claude-opus-4-5",
-    "synthesis_model": "claude-opus-4-5"
+    "provider": "anthropic",
+    "utility_model": "claude-haiku-4-5-20251001",
+    "synthesis_model": "claude-sonnet-4-5-20250929"
   },
   "embedding": {
     "provider": "voyageai",
@@ -218,7 +218,7 @@ Check your `.chunkhound.json`:
 ### "code_research returns no results"
 
 - Verify index is up to date: `CHUNKHOUND_DB_EXECUTE_TIMEOUT=120 chunkhound index`
-- Check that LLM provider is configured (`"llm": {"provider": "claude-code-cli"}`)
+- Check that LLM provider is configured (`"llm": {"provider": "anthropic"}`)
 - Try `search` with `type: "semantic"` for simpler queries
 
 ## 🗜️ ChunkHound MCP Tools

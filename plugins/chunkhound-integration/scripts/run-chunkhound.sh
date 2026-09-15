@@ -18,7 +18,7 @@
 
 set -euo pipefail
 
-# Get project root (current working directory where Claude Code runs)
+# Get project root (current working directory where the MCP server runs)
 PROJECT_ROOT="${PWD}"
 
 # Check for environment variable override first

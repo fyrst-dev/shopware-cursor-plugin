@@ -67,7 +67,7 @@ If `daemon_status` itself is not callable (the MCP tool is not registered or the
 
 ## Setup diagnostic
 
-Use this when `daemon_status` is unavailable or when a caller wants a comprehensive health check beyond pre-flight gates. The skill itself cannot execute these checks (its `allowed-tools` does not include arbitrary Bash) — emit them as remediation steps for the caller to run.
+Use this when `daemon_status` is unavailable or when a caller wants a comprehensive health check beyond pre-flight gates. The skill itself does not run these checks — emit them as remediation steps for the caller to run.
 
 ### Diagnostic steps
 
@@ -93,7 +93,7 @@ Summarize findings as a checklist, one line per component:
   ```json
   {
     "embedding": { "provider": "voyageai", "api_key": "YOUR_API_KEY" },
-    "llm": { "provider": "claude-code-cli" }
+    "llm": { "provider": "anthropic" }
   }
   ```
 

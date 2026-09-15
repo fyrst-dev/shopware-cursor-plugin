@@ -27,7 +27,7 @@ MCP_TOOLS_LIST_FILE="${SCRIPT_DIR}/tools.json"
 MCP_LOG_FILE="${SCRIPT_DIR}/server.log"
 
 # Project root detection
-# When Claude Code starts the MCP server, PWD is typically the project root
+# When Cursor starts the MCP server, PWD is typically the project root
 # This can be overridden via PROJECT_ROOT environment variable
 PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
 

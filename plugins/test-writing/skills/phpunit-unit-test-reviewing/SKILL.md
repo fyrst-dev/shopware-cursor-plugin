@@ -3,7 +3,6 @@ name: phpunit-unit-test-reviewing
 version: 6.0.0
 description: Internal sub-skill. Do not auto-activate. Use only when explicitly invoked by name by another skill or agent.
 user-invocable: false
-allowed-tools: Glob, Grep, Read, get_rules
 ---
 
 # PHPUnit Unit Test Review

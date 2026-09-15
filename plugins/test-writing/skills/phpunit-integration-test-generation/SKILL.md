@@ -5,7 +5,6 @@ description: Use this skill when the user asks to generate, write, or create int
 user-invocable: true
 context: fork
 agent: test-writing:test-generator
-allowed-tools: Read, Grep, Glob, Write, Edit, php-tooling
 ---
 
 # PHPUnit Integration Test Generation

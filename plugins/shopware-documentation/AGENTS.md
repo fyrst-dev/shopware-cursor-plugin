@@ -22,8 +22,6 @@ plugins/shopware-documentation/
 └── CHANGELOG.md
 ```
 
-A local `CLAUDE.md` containing `@AGENTS.md` may sit beside this file. It is gitignored repo-wide, so it stays untracked by convention and never ships with the plugin.
-
 ## Runtime vs Developer Docs
 
 | Runtime (executed or loaded by the skill)                         | Developer docs (human reference only) |
