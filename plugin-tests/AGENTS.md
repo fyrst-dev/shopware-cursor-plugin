@@ -28,6 +28,9 @@ Tests use BATS (Bash Automated Testing System) with these libraries:
 # Note: SCRIPTS_DIR must be set by the plugin-specific helper
 run_hook "script.sh" "command to test"
 # Sets: $status, $output
+#
+# Cursor beforeShellExecution payload ({command: ...} instead of tool_input.command)
+run_hook_cursor "script.sh" "command to test"
 
 # Assert a hook script blocks a command with an expected suggestion
 assert_hook_blocks "script.sh" "command to test" "expected suggestion"

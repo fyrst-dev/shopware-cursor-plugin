@@ -11,9 +11,11 @@ load 'test_helper/common_setup'
     local event_name context
     event_name=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.hookEventName')
     context=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+    cursor_context=$(printf '%s' "$output" | jq -r '.additional_context')
 
     assert_equal "$event_name" "SessionStart"
     assert [ -n "$context" ]
+    assert_equal "$cursor_context" "$context"
     assert_regex "$context" "install_dependencies"
     assert_regex "$context" "database_install"
     assert_regex "$context" "plugin_create"

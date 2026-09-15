@@ -2,9 +2,19 @@
 
 > **Experimental Community Project**: This repository is maintained by Shopware Labs and is not an official Shopware product. It is not affiliated with, endorsed by, or sponsored by Anthropic or any other AI provider. "Claude" and "Claude Code" are trademarks of Anthropic. This project is provided as-is without warranty.
 
-A [Claude Code plugin marketplace](https://docs.claude.com/en/docs/claude-code/plugins) for Shopware development. Provides development tools, test generation, code research, and more — integrated directly into your Claude Code workflow.
+A [Claude Code](https://docs.claude.com/en/docs/claude-code/plugins) and [Cursor](https://cursor.com/docs/plugins) plugin marketplace for Shopware development. Provides development tools, test generation, code research, and more — the same plugin directories load in both clients.
 
 ## ⚡ Quick Start
+
+### Cursor
+
+**Requirements:** [Cursor](https://cursor.com) with plugin support.
+
+This fork ships `.cursor-plugin/marketplace.json` and a `.cursor-plugin/plugin.json` in every plugin. Import the repo as a Cursor team marketplace, or copy a plugin directory into `~/.cursor/plugins/local/` for local testing. Then install `dev-tooling`, `plugin-setup`, and any other plugins from **Customize**.
+
+👉 **See [docs/cursor-setup.md](./docs/cursor-setup.md) for install, MCP config, and what does not map 1:1 from Claude Code.**
+
+### Claude Code
 
 **Requirements:** [Claude Code](https://docs.claude.com/en/docs/claude-code) installed.
 
@@ -20,9 +30,10 @@ Restart Claude Code after installing plugins that include MCP servers. Once setu
 
 ## 🛠️ Recommended Setup
 
-These plugins work best alongside a few Claude Code tweaks. Turn on `ENABLE_TOOL_SEARCH=1` for deferred MCP tool loading. Add complementary marketplaces like Anthropic's `superpowers` and `it-bens/ai-tools` (for `llm-author` and `redundant-read-blocker`). Pre-approve common tools in `settings.json`.
+These plugins work best alongside a few client tweaks. In Claude Code, turn on `ENABLE_TOOL_SEARCH=1` for deferred MCP tool loading. Add complementary marketplaces like Anthropic's `superpowers` and `it-bens/ai-tools` (for `llm-author` and `redundant-read-blocker`). Pre-approve common tools in `settings.json`.
 
-👉 **See [docs/claude-code-setup.md](./docs/claude-code-setup.md) for the full recipe.**
+👉 **Claude Code:** [docs/claude-code-setup.md](./docs/claude-code-setup.md)  
+👉 **Cursor:** [docs/cursor-setup.md](./docs/cursor-setup.md)
 
 ## 🧩 Available Plugins
 

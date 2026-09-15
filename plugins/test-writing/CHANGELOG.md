@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.0] - 2026-09-15
+
+### Added
+- **Cursor plugin sidecar.** `.cursor-plugin/plugin.json` registers the test-rules MCP server via `./.mcp.json` and sets `"rules": []` so the PHPUnit catalog under `rules/` is not loaded as always-on Cursor rules. Claude Workflows used by team review still do not run in Cursor; single-reviewer skills do.
+
 ## [5.2.0] - 2026-09-05
 
 ### Removed

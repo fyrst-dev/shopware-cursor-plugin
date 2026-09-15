@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "./hooks/scripts/session-start.sh",
+        "timeout": 5
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "./hooks/scripts/check-lifecycle-tools.sh",
+        "timeout": 5
+      }
+    ]
+  }
+}

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.21.0] - 2026-09-15
+
+### Added
+- **Cursor plugin sidecar.** `.cursor-plugin/plugin.json` points Cursor at `./.mcp.json` and `hooks/cursor-hooks.json` so the three MCP servers and the enforcement hooks install from a Cursor marketplace without a second plugin tree. Hook scripts accept Cursor `beforeShellExecution` payloads (`command`, `CURSOR_PROJECT_DIR`, `workspace_roots`) and emit both Claude `additionalContext` and Cursor `additional_context`. phpactor via `.lsp.json` remains Claude Code only.
+
 ## [3.20.0] - 2026-09-04
 
 ### Added

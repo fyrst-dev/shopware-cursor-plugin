@@ -13,17 +13,62 @@
 
 # Global variables set by this library:
 #   COMMAND - The bash command being checked
+#   HOOK_INPUT - Raw hook JSON from stdin (set by parse_hook_input)
 #   CONFIG_FILE - Path to loaded config file (or empty)
 #   ENVIRONMENT - Environment from config (native/docker/docker-compose/vagrant/ddev)
 #   ENFORCE_MCP_TOOLS - Whether to enforce MCP tools (true/false)
 
+# Resolve the project directory for Claude Code and Cursor hook payloads.
+# Prefers CLAUDE_PROJECT_DIR, then CURSOR_PROJECT_DIR, then workspace_roots/cwd
+# from the hook JSON. Sets CLAUDE_PROJECT_DIR so existing callers keep working.
+# Args: $1 = optional hook JSON string
+resolve_project_dir() {
+    local input="${1:-}"
+    if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
+        return 0
+    fi
+    if [[ -n "${CURSOR_PROJECT_DIR:-}" ]]; then
+        CLAUDE_PROJECT_DIR="${CURSOR_PROJECT_DIR}"
+        return 0
+    fi
+    if [[ -n "$input" ]]; then
+        local root
+        root=$(printf '%s' "$input" | jq -r '.workspace_roots[0] // .cwd // empty' 2>/dev/null || true)
+        if [[ -n "$root" ]]; then
+            CLAUDE_PROJECT_DIR="$root"
+        fi
+    fi
+}
+
+# Emit hook context that both Claude Code (hookSpecificOutput.additionalContext)
+# and Cursor (additional_context) accept.
+# Args: $1 = hook event name (SessionStart / PostToolUse)
+#       $2 = context string
+emit_additional_context() {
+    local event_name="$1"
+    local context="$2"
+    local json_context
+    json_context=$(printf '%s' "${context}" | jq -Rs '.')
+    cat <<EOF
+{
+  "hookSpecificOutput": {
+    "hookEventName": "${event_name}",
+    "additionalContext": ${json_context}
+  },
+  "additional_context": ${json_context}
+}
+EOF
+}
+
 # Parse hook input from stdin
-# Sets: COMMAND (global)
+# Sets: COMMAND, HOOK_INPUT (globals)
 # Exits 0 if command is empty
 parse_hook_input() {
     local input
     input=$(cat)
-    COMMAND=$(echo "$input" | jq -r '.tool_input.command // empty')
+    HOOK_INPUT="$input"
+    resolve_project_dir "$input"
+    COMMAND=$(printf '%s' "$input" | jq -r '.tool_input.command // .command // empty')
     if [[ -z "$COMMAND" ]]; then
         exit 0
     fi
@@ -39,9 +84,11 @@ load_mcp_config() {
     ENVIRONMENT=""
     ENFORCE_MCP_TOOLS="true"
 
+    resolve_project_dir "${HOOK_INPUT:-}"
+
     if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
         # Check config locations in priority order
-        for location in ".claude/.mcp-${config_prefix}.json" ".mcp-${config_prefix}.json"; do
+        for location in ".claude/.mcp-${config_prefix}.json" ".cursor/.mcp-${config_prefix}.json" ".mcp-${config_prefix}.json"; do
             if [[ -f "${CLAUDE_PROJECT_DIR}/${location}" ]]; then
                 CONFIG_FILE="${CLAUDE_PROJECT_DIR}/${location}"
                 break

@@ -18,7 +18,11 @@ Current plugin names and versions:
 for f in plugins/*/.claude-plugin/plugin.json; do
   name=$(basename "$(dirname "$(dirname "$f")")")
   ver=$(jq -r .version "$f" 2>/dev/null)
-  printf '%s: %s\n' "$name" "$ver"
+  cursor=""
+  if [ -f "plugins/$name/.cursor-plugin/plugin.json" ]; then
+    cursor=" (cursor $(jq -r .version "plugins/$name/.cursor-plugin/plugin.json" 2>/dev/null))"
+  fi
+  printf '%s: %s%s\n' "$name" "$ver" "$cursor"
 done
 ```
 
@@ -71,7 +75,7 @@ Run the bundled helper script:
 bash "${CLAUDE_SKILL_DIR}/scripts/bump-plugin-version.sh" <plugin> <new-version>
 ```
 
-It updates `plugins/<plugin>/.claude-plugin/plugin.json` (surgical text replacement that preserves formatting) and rewrites the `version:` field in every `plugins/<plugin>/skills/*/SKILL.md` frontmatter. Do not edit these files by hand.
+It updates `plugins/<plugin>/.claude-plugin/plugin.json` and, when present, `plugins/<plugin>/.cursor-plugin/plugin.json` (surgical text replacement that preserves formatting) and rewrites the `version:` field in every `plugins/<plugin>/skills/*/SKILL.md` frontmatter. Do not edit these files by hand. The two plugin.json files must stay at the same version.
 
 ### Step 4: Update CHANGELOG.md
 

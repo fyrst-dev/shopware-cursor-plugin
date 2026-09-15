@@ -24,6 +24,8 @@ run_session_start() {
     echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "SessionStart"'
     echo "$output" | jq -e '.hookSpecificOutput.additionalContext | type == "string"'
     echo "$output" | jq -e '.hookSpecificOutput.additionalContext | length > 0'
+    echo "$output" | jq -e '.additional_context | type == "string"'
+    echo "$output" | jq -e '.additional_context == .hookSpecificOutput.additionalContext'
 }
 
 # ============================================================================

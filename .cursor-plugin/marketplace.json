@@ -1,0 +1,65 @@
+{
+  "name": "shopware-ai-coding-tools",
+  "owner": {
+    "name": "Shopware",
+    "email": "info@shopware.com",
+    "url": "https://www.shopware.com"
+  },
+  "metadata": {
+    "description": "Cursor and Claude Code plugins for Shopware development",
+    "version": "1.1.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "dev-tooling",
+      "source": "./plugins/dev-tooling",
+      "description": "PHPStan, ECS, PHPUnit, ESLint, Stylelint, Jest, and more via MCP servers. Optional phpactor LSP in Claude Code."
+    },
+    {
+      "name": "test-writing",
+      "source": "./plugins/test-writing",
+      "description": "Automated PHPUnit test generation and validation for Shopware 6."
+    },
+    {
+      "name": "chunkhound-integration",
+      "source": "./plugins/chunkhound-integration",
+      "description": "Semantic code research using ChunkHound."
+    },
+    {
+      "name": "ci-failure-interpretation",
+      "source": "./plugins/ci-failure-interpretation",
+      "description": "CI failure log interpretation for GitHub Actions workflows."
+    },
+    {
+      "name": "contributor-writing",
+      "source": "./plugins/contributor-writing",
+      "description": "ADRs, PR descriptions, commit messages, RELEASE_INFO, and UPGRADE entries for Shopware core."
+    },
+    {
+      "name": "code-contribution-analysis",
+      "source": "./plugins/code-contribution-analysis",
+      "description": "Analyzes GitHub pull requests and issues in depth with ChunkHound research."
+    },
+    {
+      "name": "shopware-env",
+      "source": "./plugins/shopware-env",
+      "description": "Bootstrap and maintain Shopware development environments."
+    },
+    {
+      "name": "code-migration",
+      "source": "./plugins/code-migration",
+      "description": "Technical migration skills, starting with XML configuration to PHP."
+    },
+    {
+      "name": "plugin-setup",
+      "source": "./plugins/plugin-setup",
+      "description": "Interactive setup skills for dev-tooling and chunkhound-integration."
+    },
+    {
+      "name": "shopware-documentation",
+      "source": "./plugins/shopware-documentation",
+      "description": "Documentation-surface structuring: size budgets, splitting, and cross-reference integrity."
+    }
+  ]
+}

@@ -103,6 +103,7 @@ create_neon_baseline() {
     echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "PostToolUse"'
     echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("src/Foo.php")'
     echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("phpstan-baseline.php")'
+    echo "$output" | jq -e '.additional_context == .hookSpecificOutput.additionalContext'
 }
 
 @test "warns for multiple matching files in PHP baseline" {

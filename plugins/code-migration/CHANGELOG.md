@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.0] - 2026-09-15
+
+### Added
+- **Cursor plugin sidecar.** `.cursor-plugin/plugin.json` so the XML-to-PHP migration skill installs from a Cursor marketplace.
+
 ## [1.0.0] - 2026-07-30
 
 - Initial release with the `xml-config-migrating` skill: migrates extension XML configuration (service definitions, routes, package config) 1:1 to PHP configurators — package config to PHP or YAML — proves container and route equivalence via `debug:container` / `debug:router` dump diffs, runs the extension's tests, and reports the result in a fixed verification format.

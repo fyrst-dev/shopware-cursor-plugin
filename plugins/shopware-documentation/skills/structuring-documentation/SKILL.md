@@ -1,6 +1,6 @@
 ---
 name: structuring-documentation
-version: 1.0.0
+version: 1.1.0
 description: Use when writing, editing, auditing, splitting, or measuring Markdown documentation surfaces — README.md, AGENTS.md, CLAUDE.md, and docs/ siblings. Triggers include "is this doc too long", "split this README", "measure the docs", "where does this documentation belong", "audit the documentation", and any request to check a documentation file against a size budget or repair its cross-references.
 license: MIT
 ---

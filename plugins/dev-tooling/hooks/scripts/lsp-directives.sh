@@ -5,10 +5,12 @@
 # Exits silently if no LSP server is enabled.
 set -euo pipefail
 
-# Claude Code writes hook-event JSON to stdin for every hook, including
-# SessionStart; draining it avoids blocking the harness's write on a payload
-# larger than the pipe buffer.
-cat > /dev/null
+# Claude Code and Cursor write hook-event JSON to stdin for every hook,
+# including SessionStart; drain it so the harness write cannot block.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+resolve_project_dir "$(cat)"
 
 HOOK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PROMPT_DIR="${HOOK_DIR}/prompts"
@@ -20,7 +22,7 @@ command -v jq &>/dev/null || exit 0
 is_lsp_enabled() {
     local prefix="$1"
     local config_file=""
-    for loc in ".claude/.lsp-${prefix}.json" ".lsp-${prefix}.json"; do
+    for loc in ".claude/.lsp-${prefix}.json" ".cursor/.lsp-${prefix}.json" ".lsp-${prefix}.json"; do
         if [[ -f "${CLAUDE_PROJECT_DIR}/${loc}" ]]; then
             config_file="${CLAUDE_PROJECT_DIR}/${loc}"
             break
@@ -51,14 +53,5 @@ done
 
 [[ -z "$content" ]] && exit 0
 
-additional_context=$(printf '%s' "$content" | jq -Rs '.')
-cat <<EOF
-{
-  "hookSpecificOutput": {
-    "hookEventName": "SessionStart",
-    "additionalContext": ${additional_context}
-  }
-}
-EOF
-
+emit_additional_context "SessionStart" "$content"
 exit 0

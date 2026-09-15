@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.0] - 2026-09-15
+
+### Added
+- **Cursor plugin sidecar.** `.cursor-plugin/plugin.json` so the documentation structuring skill installs from a Cursor marketplace.
+
 ## [1.0.0] - 2026-08-13
 
 ### Added

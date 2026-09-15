@@ -5,8 +5,9 @@
 # Usage: bump-plugin-version.sh <plugin-name> <new-version>
 #
 # Updates in-place:
-#   plugins/<plugin-name>/.claude-plugin/plugin.json  (top-level "version" field)
-#   plugins/<plugin-name>/skills/*/SKILL.md           (frontmatter "version" field)
+#   plugins/<plugin-name>/.claude-plugin/plugin.json   (top-level "version" field)
+#   plugins/<plugin-name>/.cursor-plugin/plugin.json   (same field, when present)
+#   plugins/<plugin-name>/skills/*/SKILL.md            (frontmatter "version" field)
 #
 # Does NOT touch CHANGELOG.md (needs semantic content).
 # Does NOT run `git add` (caller stages when ready).
@@ -71,6 +72,21 @@ awk -v v="$NEW_VERSION" '
 ' "$PLUGIN_JSON" > "$tmp"
 mv "$tmp" "$PLUGIN_JSON"
 printf '  %s  (%s -> %s)\n' "$(rel "$PLUGIN_JSON")" "$OLD_VERSION" "$NEW_VERSION"
+
+# 1b. Cursor sidecar manifest — keep the version lockstep with Claude Code
+CURSOR_PLUGIN_JSON="$PLUGIN_DIR/.cursor-plugin/plugin.json"
+if [ -f "$CURSOR_PLUGIN_JSON" ]; then
+  tmp="$(mktemp)"
+  awk -v v="$NEW_VERSION" '
+    !done && /^[[:space:]]*"version"[[:space:]]*:/ {
+      sub(/:[[:space:]]*"[^"]*"/, ": \"" v "\"")
+      done = 1
+    }
+    { print }
+  ' "$CURSOR_PLUGIN_JSON" > "$tmp"
+  mv "$tmp" "$CURSOR_PLUGIN_JSON"
+  printf '  %s  (%s -> %s)\n' "$(rel "$CURSOR_PLUGIN_JSON")" "$OLD_VERSION" "$NEW_VERSION"
+fi
 
 # 2. SKILL.md frontmatters
 SKILLS_DIR="$PLUGIN_DIR/skills"

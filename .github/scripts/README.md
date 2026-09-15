@@ -14,6 +14,9 @@ Automation scripts for maintaining the AI Coding Tools repository.
 # Validate plugin versions (CI/CD use)
 .github/scripts/validate-versions.sh
 
+# Validate Cursor marketplace sidecars
+.github/scripts/validate-cursor-plugins.sh
+
 # Synchronize plugin versions (maintenance)
 .github/scripts/update-versions.sh
 ```
@@ -64,7 +67,23 @@ Updates all issue template dropdowns by scanning the repository for plugins, com
 
 ### validate-versions.sh
 
-Read-only validation for CI/CD pipelines. Verifies that plugin versions are synchronized across plugin.json (authoritative source), SKILL.md frontmatter, and CHANGELOG.md.
+Read-only validation for CI/CD pipelines. Verifies that plugin versions are synchronized across plugin.json (authoritative source), the Cursor sidecar plugin.json when present, SKILL.md frontmatter, and CHANGELOG.md.
+
+---
+
+### validate-cursor-plugins.sh
+
+Read-only validation that the Cursor marketplace lists the same plugins as Claude Code, each plugin has `.cursor-plugin/plugin.json`, MCP/hook path overrides resolve, and `test-writing` suppresses Cursor rule auto-discovery.
+
+**Usage:**
+```bash
+./validate-cursor-plugins.sh
+```
+
+**Exit Codes:**
+- `0` - Cursor marketplace is consistent
+- `1` - One or more problems
+- `2` - Fatal error
 
 **Usage:**
 ```bash

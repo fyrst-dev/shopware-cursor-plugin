@@ -7,7 +7,7 @@
     "url": "https://www.shopware.com"
   },
   "metadata": {
-    "description": "Claude Code plugins for Shopware development",
+    "description": "Claude Code and Cursor plugins for Shopware development",
     "version": "1.0.0",
     "pluginRoot": "./plugins"
   },

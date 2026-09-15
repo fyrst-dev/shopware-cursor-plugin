@@ -22,6 +22,7 @@ setup() {
 
 teardown() {
     unset CLAUDE_PROJECT_DIR
+    unset CURSOR_PROJECT_DIR
 }
 
 # Shared setup for PHP MCP tool tests.

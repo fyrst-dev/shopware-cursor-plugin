@@ -39,4 +39,5 @@ setup() {
 
 teardown() {
     unset CLAUDE_PROJECT_DIR
+    unset CURSOR_PROJECT_DIR
 }

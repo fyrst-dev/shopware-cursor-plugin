@@ -1,6 +1,6 @@
 ---
 name: ci-log-interpretation
-version: 1.0.1
+version: 1.1.0
 description: Use this skill when reading or analyzing CI logs from a Shopware GitHub Actions workflow to figure out why a build failed — phrases like "why did CI fail", "what broke the build", "check the pipeline", "interpret these logs", "debug this red build" — or whenever raw run logs, job logs, or check annotations from a failed GitHub Actions workflow appear in the conversation. Covers PHPUnit, PHPStan, ECS, ESLint, TypeScript, Stylelint, Prettier, Jest, Playwright, ludtwig, and Lighthouse failures. Activate even if the user does not explicitly mention "CI" — any interaction with GitHub Actions failure output benefits from this skill's noise-filtering and tool-identification knowledge.
 allowed-tools: Read, Grep, Glob
 ---

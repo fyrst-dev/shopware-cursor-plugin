@@ -14,6 +14,7 @@
 ├── validate-issue-templates.sh        # Read-only template validation (CI/CD ready)
 ├── update-issue-templates.sh          # Write-only template updates
 ├── validate-versions.sh               # Read-only version validation (CI/CD ready)
+├── validate-cursor-plugins.sh         # Cursor marketplace sidecar validation
 ├── update-versions.sh                 # Write-only version synchronization
 └── setup-bats.sh                      # BATS testing framework installer
 ```
@@ -27,7 +28,8 @@ This directory provides scripts for maintaining the AI Coding Tools repository:
 - **Update Script** (`update-issue-templates.sh`) - Simple maintenance updates
 
 **Version Management:**
-- **Validation Script** (`validate-versions.sh`) - CI/CD validation of version consistency
+- **Validation Script** (`validate-versions.sh`) - CI/CD validation of version consistency (Claude plugin.json plus Cursor sidecar)
+- **Cursor Marketplace Script** (`validate-cursor-plugins.sh`) - CI/CD validation of `.cursor-plugin/` sidecars
 - **Update Script** (`update-versions.sh`) - Synchronize versions from plugin.json (authoritative source)
 
 **Libraries:**

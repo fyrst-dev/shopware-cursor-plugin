@@ -11,14 +11,16 @@ PROMPT_FILE="${HOOK_DIR}/prompts/sequential-chunkhound-directives.md"
 
 [[ ! -f "${PROMPT_FILE}" ]] && exit 0
 
-context=$(jq -Rs '.' < "${PROMPT_FILE}")
+context=$(cat "${PROMPT_FILE}")
+json_context=$(printf '%s' "${context}" | jq -Rs '.')
 
 cat <<EOF
 {
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
-    "additionalContext": ${context}
-  }
+    "additionalContext": ${json_context}
+  },
+  "additional_context": ${json_context}
 }
 EOF
 

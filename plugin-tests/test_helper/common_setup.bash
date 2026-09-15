@@ -32,6 +32,21 @@ run_hook() {
     run bash -c 'printf "%s" "$1" | bash "$2"' _ "$payload" "${SCRIPTS_DIR}/${script}"
 }
 
+# Run a hook script with a Cursor beforeShellExecution payload ({command: ...})
+run_hook_cursor() {
+    local script="$1"
+    local command="$2"
+
+    if [[ -z "${SCRIPTS_DIR:-}" ]]; then
+        fail "SCRIPTS_DIR must be set before calling run_hook_cursor"
+    fi
+
+    local payload
+    payload=$(jq -cn --arg cmd "$command" '{command: $cmd}')
+
+    run bash -c 'printf "%s" "$1" | bash "$2"' _ "$payload" "${SCRIPTS_DIR}/${script}"
+}
+
 # Assert that a hook script blocks a command and suggests a specific MCP tool
 # Args: $1=script name, $2=bash command, $3=expected suggestion substring
 assert_hook_blocks() {

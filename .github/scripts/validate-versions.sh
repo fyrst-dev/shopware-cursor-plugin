@@ -4,6 +4,7 @@
 #
 # Validates that plugin versions are synchronized across all locations:
 # - plugin.json (authoritative source: .claude-plugin/plugin.json per plugin)
+# - .cursor-plugin/plugin.json (must match when present)
 # - SKILL.md YAML frontmatter
 # - CHANGELOG.md latest version headers
 #
@@ -100,6 +101,45 @@ validate_skill_versions() {
   [ $failed -eq 0 ]
 }
 
+# Validate the Cursor sidecar plugin.json version when the file exists
+# Returns 0 if matching or absent, 1 if mismatched
+validate_cursor_plugin_version() {
+  local plugin_name="$1"
+  local expected_version="$2"
+
+  local plugin_dir
+  plugin_dir=$(_get_plugin_source_dir "$plugin_name")
+  local cursor_json="${plugin_dir}/.cursor-plugin/plugin.json"
+
+  if [ ! -f "$cursor_json" ]; then
+    log_warning "Plugin '$plugin_name' has no .cursor-plugin/plugin.json"
+    return 0
+  fi
+
+  local cursor_version
+  cursor_version=$(extract_cursor_plugin_version "$plugin_name")
+  local relative_path="${cursor_json#"$REPO_ROOT/"}"
+
+  if [ -z "$cursor_version" ]; then
+    log_error "$relative_path: version not found"
+    if [ "$GITHUB_ACTIONS_MODE" = true ]; then
+      echo "::error file=$relative_path,title=Missing version::.cursor-plugin/plugin.json missing 'version' field"
+    fi
+    return 1
+  fi
+
+  if [ "$cursor_version" = "$expected_version" ]; then
+    log_success "$relative_path: version $cursor_version"
+    return 0
+  fi
+
+  log_error "$relative_path: version mismatch (expected $expected_version, found $cursor_version)"
+  if [ "$GITHUB_ACTIONS_MODE" = true ]; then
+    echo "::error file=$relative_path,title=Version mismatch::Expected $expected_version, found $cursor_version"
+  fi
+  return 1
+}
+
 # Validate CHANGELOG.md version for a plugin
 # Returns 0 if matching, 1 if mismatched
 validate_changelog_version() {
@@ -161,6 +201,7 @@ validate_plugin_versions() {
   log_info "Authoritative version: $plugin_version"
 
   # Validate each location
+  validate_cursor_plugin_version "$plugin_name" "$plugin_version" || failed=$((failed + 1))
   validate_skill_versions "$plugin_name" "$plugin_version" || failed=$((failed + 1))
   validate_changelog_version "$plugin_name" "$plugin_version" || failed=$((failed + 1))
 
@@ -255,6 +296,7 @@ main() {
           echo "| Location | Description |"
           echo "|----------|-------------|"
           echo "| \`plugins/**/.claude-plugin/plugin.json\` | **Authoritative source** |"
+          echo "| \`plugins/**/.cursor-plugin/plugin.json\` | Cursor sidecar, must match |"
           echo "| \`plugins/**/skills/*/SKILL.md\` | YAML frontmatter: \`version: X.Y.Z\` |"
           echo "| \`plugins/**/CHANGELOG.md\` | Latest header: \`## [X.Y.Z]\` |"
         } >> "$GITHUB_STEP_SUMMARY"

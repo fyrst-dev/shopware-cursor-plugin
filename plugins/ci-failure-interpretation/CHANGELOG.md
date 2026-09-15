@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.0] - 2026-09-15
+
+### Added
+- **Cursor plugin sidecar.** `.cursor-plugin/plugin.json` so the CI log interpretation skill installs from a Cursor marketplace.
+
 ## [1.0.1] - 2026-05-13
 
 ### Changed

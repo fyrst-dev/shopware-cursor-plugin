@@ -57,3 +57,9 @@ bats_test_function --description "blocks bin/console assets:install → suggests
     assert_success
     refute_output --partial "install_dependencies"
 }
+
+@test "Cursor payload blocks composer install" {
+    run_hook_cursor "check-lifecycle-tools.sh" "composer install"
+    assert_failure 2
+    assert_output --partial "install_dependencies"
+}

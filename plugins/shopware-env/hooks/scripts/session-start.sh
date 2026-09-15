@@ -2,7 +2,11 @@
 # SessionStart hook: inject lifecycle tool directives.
 set -euo pipefail
 
-cat > /dev/null  # drain stdin
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+# Drain stdin so the harness write cannot block on a large payload.
+cat > /dev/null
 
 HOOK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PROMPT_FILE="${HOOK_DIR}/prompts/mcp-tool-directives.md"
@@ -12,14 +16,5 @@ if [[ -f "$PROMPT_FILE" ]]; then
     context=$(cat "$PROMPT_FILE")
 fi
 
-json_context=$(printf '%s' "${context}" | jq -Rs '.')
-cat <<EOF
-{
-  "hookSpecificOutput": {
-    "hookEventName": "SessionStart",
-    "additionalContext": ${json_context}
-  }
-}
-EOF
-
+emit_additional_context "SessionStart" "${context}"
 exit 0

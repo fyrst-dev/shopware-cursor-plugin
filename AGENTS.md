@@ -14,12 +14,13 @@
 
 **AGENTS.md, README.md, and CHANGELOG.md inside plugins are developer documentation, not runtime code.** These files are read by humans maintaining this repository. Claude Code does not load or execute them when the plugin is installed. Changes to these files affect documentation only, not plugin behavior.
 
-Runtime files (executed by Claude Code):
+Runtime files (executed by Claude Code and, where mapped, Cursor):
 - `skills/*/SKILL.md` and `skills/*/references/*.md`
 - `agents/*.md`
 - `commands/*.md`
-- `hooks/` (hooks.json and scripts)
-- `.mcp.json`
+- `hooks/` (`hooks.json` for Claude Code, `cursor-hooks.json` for Cursor, plus scripts)
+- `.mcp.json` (Claude Code discovery; Cursor plugin.json points at the same file)
+- `.cursor-plugin/plugin.json` (Cursor manifest; does not replace `.claude-plugin/plugin.json`)
 
 When modifying runtime behavior (e.g. MCP tool references, workflow instructions), edit only runtime files. When updating architectural descriptions or usage guides, edit the developer documentation.
 
@@ -29,13 +30,23 @@ This marketplace uses a **distributed metadata pattern** where plugin metadata i
 
 ### Structure
 ```
-.claude-plugin/marketplace.json       # Minimal registry (name + source only)
+.claude-plugin/marketplace.json       # Claude Code registry (name + source)
+.cursor-plugin/marketplace.json       # Cursor registry (same plugins, Cursor fields allowed)
 plugins/
-  [category]/
-    [plugin-name]/
-      .claude-plugin/plugin.json      # Full plugin metadata
-      ...                             # Plugin components
+  [plugin-name]/
+    .claude-plugin/plugin.json        # Claude Code metadata (authoritative version)
+    .cursor-plugin/plugin.json        # Cursor metadata (same version; hooks/mcpServers/rules overrides)
+    ...                               # Shared plugin components
 ```
+
+Do not invent a second plugin tree for Cursor. Add Cursor sidecars next to the Claude Code files and keep skills, agents, MCP servers, and hook scripts in the existing directories.
+
+Cursor discovery notes:
+- Skills, agents, and commands use the same default folders as Claude Code.
+- MCP: set `"mcpServers": "./.mcp.json"` in `.cursor-plugin/plugin.json`. Cursor expands `${CLAUDE_PLUGIN_ROOT}`.
+- Hooks: Claude Code reads `hooks/hooks.json` (PascalCase events). Cursor reads `hooks/cursor-hooks.json` via the Cursor manifest (`sessionStart`, `beforeShellExecution`, `postToolUse`).
+- `test-writing` must set `"rules": []` so `rules/` (the PHPUnit catalog) is not loaded as Cursor `.mdc` rules.
+- `.lsp.json` has no Cursor plugin equivalent.
 
 ### marketplace.json Schema (Minimal Registry)
 
@@ -151,12 +162,10 @@ All commit messages in this repository MUST be generated using the `commit-messa
    - `skills/[skill-name]/SKILL.md` - Model-invoked skills
    - `hooks/` - Event handlers (hooks.json)
    - `.mcp.json` - MCP server configuration
-4. **Register in marketplace.json**: Add minimal entry to `plugins` array:
-   ```json
-   { "name": "plugin-name", "source": "./plugins/[category]/plugin-name" }
-   ```
-5. **Update README.md**: Add to "Available Plugins" section
-6. **Validate**: `claude plugin validate .`
+4. **Register in marketplace.json**: Add the same name/source entry to both `.claude-plugin/marketplace.json` and `.cursor-plugin/marketplace.json`.
+5. **Create Cursor sidecar**: `plugins/[plugin-name]/.cursor-plugin/plugin.json` with the same `name`/`version` as the Claude manifest. Point `mcpServers` at `./.mcp.json` and `hooks` at `./hooks/cursor-hooks.json` when those components exist.
+6. **Update README.md**: Add to "Available Plugins" section
+7. **Validate**: `claude plugin validate .` and `.github/scripts/validate-cursor-plugins.sh`
 
 ### Version Management
 
@@ -166,11 +175,17 @@ Use the `plugin-updating` skill at `.claude/skills/plugin-updating/SKILL.md` for
 
 ### Local Testing
 ```bash
-# Validate marketplace structure
+# Validate Claude marketplace structure
 claude plugin validate .
 
-# Test locally before publishing
+# Validate Cursor marketplace sidecars
+.github/scripts/validate-cursor-plugins.sh
+
+# Test Claude Code locally
 /plugin marketplace add /path/to/ai-coding-tools
+
+# Test a Cursor plugin locally (copy the plugin directory, then reload Cursor)
+cp -R plugins/dev-tooling ~/.cursor/plugins/local/dev-tooling
 ```
 
 ### Hook Script Testing
@@ -186,7 +201,8 @@ Tests are in `plugin-tests/<plugin-name>/` mirroring plugin structure. Tests for
 
 ### Pre-release Checklist
 - [ ] `claude plugin validate .` passes
-- [ ] All plugin versions updated in `.claude-plugin/plugin.json` files
+- [ ] `.github/scripts/validate-cursor-plugins.sh` passes
+- [ ] All plugin versions updated in `.claude-plugin/plugin.json` and matching `.cursor-plugin/plugin.json` files
 - [ ] All skill versions updated in SKILL.md frontmatter (must match plugin version)
 - [ ] README.md "Available Plugins" section current
 - [ ] Issue template dropdowns current (`.github/scripts/validate-issue-templates.sh`)

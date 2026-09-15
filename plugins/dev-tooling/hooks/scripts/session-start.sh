@@ -2,24 +2,32 @@
 # SessionStart hook: inject MCP dev tool usage directives + scopes metadata.
 set -euo pipefail
 
-# Claude Code writes hook-event JSON to stdin for every hook, including
-# SessionStart; draining it avoids blocking the harness's write on a payload
-# larger than the pipe buffer.
-cat > /dev/null
+# Claude Code and Cursor write hook-event JSON to stdin for every hook,
+# including SessionStart; drain it so the harness write cannot block on
+# a payload larger than the pipe buffer.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+resolve_project_dir "$(cat)"
 
 HOOK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PROMPT_FILE="${HOOK_DIR}/prompts/mcp-tool-directives.md"
 
+_config_locations() {
+    local prefix="$1"
+    printf '%s\n' ".claude/.mcp-${prefix}.json" ".cursor/.mcp-${prefix}.json" ".mcp-${prefix}.json"
+}
+
 is_enforced() {
     local config_prefix="$1"
     [[ -z "${CLAUDE_PROJECT_DIR:-}" ]] && return 0
-    local config_file=""
-    for location in ".claude/.mcp-${config_prefix}.json" ".mcp-${config_prefix}.json"; do
+    local config_file="" location
+    while IFS= read -r location; do
         if [[ -f "${CLAUDE_PROJECT_DIR}/${location}" ]]; then
             config_file="${CLAUDE_PROJECT_DIR}/${location}"
             break
         fi
-    done
+    done < <(_config_locations "$config_prefix")
     [[ -z "$config_file" ]] && return 0
     command -v jq &>/dev/null || return 0
     local val
@@ -35,13 +43,13 @@ _render_scopes_section() {
     [[ -z "${CLAUDE_PROJECT_DIR:-}" ]] && return 0
     command -v jq &>/dev/null || return 0
 
-    local config_file=""
-    for location in ".claude/.mcp-${prefix}.json" ".mcp-${prefix}.json"; do
+    local config_file="" location
+    while IFS= read -r location; do
         if [[ -f "${CLAUDE_PROJECT_DIR}/${location}" ]]; then
             config_file="${CLAUDE_PROJECT_DIR}/${location}"
             break
         fi
-    done
+    done < <(_config_locations "$prefix")
     [[ -z "${config_file}" ]] && return 0
 
     local has_scopes
@@ -82,14 +90,5 @@ done
 
 [[ -n "${scopes_block}" ]] && context+="${scopes_block}"
 
-json_context=$(printf '%s' "${context}" | jq -Rs '.')
-cat <<EOF
-{
-  "hookSpecificOutput": {
-    "hookEventName": "SessionStart",
-    "additionalContext": ${json_context}
-  }
-}
-EOF
-
+emit_additional_context "SessionStart" "${context}"
 exit 0

@@ -7,6 +7,7 @@
 # SKILL.md frontmatter, and CHANGELOG.md files.
 #
 # Authoritative source: Each plugin's .claude-plugin/plugin.json
+# Cursor sidecar: plugins/<name>/.cursor-plugin/plugin.json must match when present.
 #
 # Usage:
 #   source lib/version-operations.sh
@@ -41,6 +42,24 @@ extract_plugin_version() {
   fi
 
   local plugin_json="$plugin_dir/.claude-plugin/plugin.json"
+  if [ -f "$plugin_json" ]; then
+    jq -r '.version // empty' "$plugin_json"
+  fi
+}
+
+# extract_cursor_plugin_version - Get version from plugin's .cursor-plugin/plugin.json
+# Args: plugin_name
+# Output: Version string or empty if the Cursor sidecar is absent
+extract_cursor_plugin_version() {
+  local plugin_name="$1"
+  local plugin_dir
+  plugin_dir=$(_get_plugin_source_dir "$plugin_name")
+
+  if [ -z "$plugin_dir" ] || [ ! -d "$plugin_dir" ]; then
+    return
+  fi
+
+  local plugin_json="$plugin_dir/.cursor-plugin/plugin.json"
   if [ -f "$plugin_json" ]; then
     jq -r '.version // empty' "$plugin_json"
   fi

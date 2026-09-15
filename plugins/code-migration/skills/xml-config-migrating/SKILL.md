@@ -1,6 +1,6 @@
 ---
 name: xml-config-migrating
-version: 1.0.0
+version: 1.1.0
 description: Use this skill when a Shopware plugin or app-server extension needs its XML configuration migrated to PHP — phrases like "migrate services.xml", "convert my plugin config to PHP", "xml to php migration", "fix the XML deprecation", "prepare my plugin for Shopware 6.8 / Symfony 8", or when a deprecation like "The XML configuration file ... is deprecated and will not be loaded in v6.8.0.0" appears in logs or CI.
 license: MIT
 ---
