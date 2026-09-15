@@ -9,8 +9,8 @@ bats_require_minimum_version 1.11.0
 load 'test_helper/common_setup'
 
 setup() {
-    WORKFLOW_DIR="${PLUGIN_DIR}/skills/phpunit-test-team-reviewing/workflow"
-    SCRIPT="${WORKFLOW_DIR}/verify-method-counts.sh"
+    SCRIPTS_DIR="${PLUGIN_DIR}/skills/phpunit-test-team-reviewing/scripts"
+    SCRIPT="${SCRIPTS_DIR}/verify-method-counts.sh"
     REPO_DIR="${BATS_TEST_TMPDIR}/repo"
     mkdir -p "${REPO_DIR}/tests/unit"
     # shellcheck source=/dev/null  # SCRIPT is derived from PLUGIN_DIR at runtime
