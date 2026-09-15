@@ -2,7 +2,7 @@
 
 # Shopware Cursor Plugin Marketplace — Technical Reference
 
-This repository is a **Cursor-only** plugin marketplace. Do not add Claude Code packaging (`.claude-plugin/`, Claude `hooks.json` PascalCase events, `mcp.json`, `.lsp.json`). The `upstream` branch keeps the historical Claude marketplace; merge **from** `upstream` into working branches when syncing, never the other way around.
+This repository is a **Cursor-only** plugin marketplace. Do not add Claude Code packaging (`.claude-plugin/`, dotted `.mcp.json`, Claude `hooks.json` PascalCase events, `.lsp.json`). Cursor discovers `mcp.json` by default. The `upstream` branch keeps the historical Claude marketplace; merge **from** `upstream` into working branches when syncing, never the other way around.
 
 ## Understanding Skills
 

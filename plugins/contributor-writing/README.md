@@ -4,16 +4,9 @@ Writing skills for Shopware core contributors. Includes Architecture Decision Re
 
 ## ⚡ Installation
 
-```bash
-/plugin install contributor-writing@shopware-ai-coding-tools
-```
+Install `contributor-writing` from **Customize** after adding this repo as a Cursor team marketplace (track **`main`**). See [docs/cursor-setup.md](../../docs/cursor-setup.md).
 
-For PR analysis, the skills use whatever GitHub access the session has — the `gh` CLI, or a GitHub MCP server such as the `github-mcp` plugin from the [github-agent-tools](https://github.com/shopwareLabs/github-agent-tools) marketplace:
-
-```bash
-/plugin marketplace add shopwareLabs/github-agent-tools
-/plugin install github-mcp@github-agent-tools
-```
+For PR analysis, the skills use whatever GitHub access the session has — the `gh` CLI, or a GitHub MCP server such as the `github-mcp` plugin from the [github-agent-tools](https://github.com/shopwareLabs/github-agent-tools) marketplace.
 
 ## 🎯 Skills
 

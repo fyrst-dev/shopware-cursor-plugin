@@ -23,7 +23,7 @@ def main(
         help="Output directory for the ZIP [default: current directory]",
     ),
 ) -> None:
-    """Build an Agent Skills-compliant ZIP from a Claude Code skill."""
+    """Build an Agent Skills-compliant ZIP from a marketplace skill."""
     if output_dir is None:
         output_dir = Path.cwd()
 

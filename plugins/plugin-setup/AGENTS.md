@@ -6,7 +6,6 @@
 plugins/plugin-setup/
 ├── .cursor-plugin/plugin.json    # Plugin metadata
 ├── CHANGELOG.md                  # Version history
-├── CLAUDE.md                     # Points to AGENTS.md
 ├── AGENTS.md                     # This file
 ├── README.md                     # User documentation
 └── skills/

@@ -255,16 +255,11 @@ Then present a minimal plan in Phase 2 ("Everything appears to be set up. Nothin
 After the last execution step completes (or immediately after Phase 3 if nothing needed to be done), print exactly this message and STOP:
 
 ```
-Development environment is ready. To get the full dev tooling experience, install dev-tooling:
+Development environment is ready. To get the full dev tooling experience, install `dev-tooling` from Customize.
 
-/plugin install dev-tooling@shopware-ai-coding-tools
+For GitHub tooling (PRs, issues, CI), install `github-mcp` from the github-agent-tools marketplace (https://github.com/shopwareLabs/github-agent-tools).
 
-For GitHub tooling (PRs, issues, CI), add the companion marketplace and install github-mcp:
-
-/plugin marketplace add shopwareLabs/github-agent-tools
-/plugin install github-mcp@github-agent-tools
-
-After installing, run /reload-plugins and ask me to continue —
+After installing, reload the window and ask me to continue —
 I'll walk you through configuring the dev tools for this environment.
 ```
 

@@ -223,7 +223,7 @@ The team review decomposes large files into per-track reviews. Each track also r
 ### MCP Tool Unavailability
 
 If `get_rules` is unavailable:
-- Report error: "test-rules MCP server not available — ensure the test-writing plugin is installed and Claude Code was restarted"
+- Report error: "test-rules MCP server not available — ensure the test-writing plugin is installed and the Cursor window was reloaded"
 - Do not fall back to hardcoded checks
 
 ### Not an Integration Test

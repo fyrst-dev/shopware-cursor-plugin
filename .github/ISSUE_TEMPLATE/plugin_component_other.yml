@@ -145,7 +145,7 @@ body:
       label: "Steps to Reproduce"
       description: "Provide step-by-step instructions to reproduce the issue"
       placeholder: |
-        1. Run `/plugin install [plugin-name]@shopware-ai-coding-tools`
+        1. Install the plugin from Customize
         2. Reload Cursor (if required)
         3. Observe [error/unexpected behavior]
         4. Expected [correct behavior]
@@ -205,16 +205,16 @@ body:
     id: plugin-version
     attributes:
       label: "Plugin Version"
-      description: "Run `/plugin list` and paste the version shown for this plugin"
+      description: "Check **Customize** and paste the version shown for this plugin"
       placeholder: "e.g., dev-tooling@2.3.0"
     validations:
       required: true
 
   - type: input
-    id: claude-version
+    id: cursor-version
     attributes:
       label: "Cursor Version"
-      description: "Run `claude --version` and paste the output"
+      description: "Open Cursor **Help → About** and paste the version"
       placeholder: "e.g., 0.1.23"
     validations:
       required: true
@@ -255,7 +255,7 @@ body:
       label: "Additional System Information"
       description: "Any relevant system or environment information"
       placeholder: |
-        /plugin list output
+        Customize plugin list / version
         Plugin cache location
         Other relevant system info
 

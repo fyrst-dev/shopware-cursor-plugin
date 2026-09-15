@@ -16,7 +16,6 @@ plugins/ci-failure-interpretation/
 │           └── log-envelope.md          # GitHub Actions log format, noise layers
 ├── README.md
 ├── AGENTS.md                            # This file
-├── CLAUDE.md
 └── CHANGELOG.md
 ```
 
@@ -34,7 +33,7 @@ plugins/ci-failure-interpretation/
 
 ## Design Philosophy
 
-1. **Pure knowledge, not workflow** — The skill teaches Claude how to read logs, it does not prescribe a debugging workflow or guide tool usage
+1. **Pure knowledge, not workflow** — The skill teaches the agent how to read logs, it does not prescribe a debugging workflow or guide tool usage
 2. **Progressive disclosure** — Core identification and noise rules inline in SKILL.md, detailed tool anatomy in reference files loaded on demand
 3. **False positive focus** — Each tool section explicitly lists what looks like an error but isn't, since these are the most common misinterpretation traps
 4. **Real examples** — All failure patterns come from actual Shopware CI runs, not hypothetical output

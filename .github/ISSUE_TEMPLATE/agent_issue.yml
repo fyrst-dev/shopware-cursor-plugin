@@ -213,16 +213,16 @@ body:
     id: plugin-version
     attributes:
       label: "Plugin Version"
-      description: "Run `/plugin list` and paste the version shown for this plugin"
+      description: "Check **Customize** and paste the version shown for this plugin"
       placeholder: "e.g., codex-debugger@1.0.0"
     validations:
       required: true
 
   - type: input
-    id: claude-version
+    id: cursor-version
     attributes:
       label: "Cursor Version"
-      description: "Run `claude --version` and paste the output"
+      description: "Open Cursor **Help → About** and paste the version"
       placeholder: "e.g., 0.1.23"
     validations:
       required: true

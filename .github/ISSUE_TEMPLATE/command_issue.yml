@@ -41,9 +41,8 @@ body:
       label: "Command Syntax Used"
       description: "Paste the exact command you ran, including all arguments and scope"
       placeholder: |
-        /commit-gen HEAD~3
-        /comment-review src/Services/
-        /comment-check --git
+        /your-command args
+        /your-command path/to/files
       render: shell
     validations:
       required: true
@@ -107,7 +106,7 @@ body:
       placeholder: |
         1. Create a file with...
         2. Stage changes with `git add .`
-        3. Run `/commit-gen`
+        3. Run `/your-command`
         4. Observe incorrect output...
     validations:
       required: true
@@ -165,16 +164,16 @@ body:
     id: plugin-version
     attributes:
       label: "Plugin Version"
-      description: "Run `/plugin list` and paste the version shown for this plugin"
+      description: "Check **Customize** and paste the version shown for this plugin"
       placeholder: "e.g., comment-review@1.2.0"
     validations:
       required: true
 
   - type: input
-    id: claude-version
+    id: cursor-version
     attributes:
       label: "Cursor Version"
-      description: "Run `claude --version` and paste the output"
+      description: "Open Cursor **Help → About** and paste the version"
       placeholder: "e.g., 0.1.23"
     validations:
       required: true

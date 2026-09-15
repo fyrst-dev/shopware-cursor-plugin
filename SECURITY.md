@@ -13,7 +13,7 @@ We aim to acknowledge reports within 5 business days and will coordinate a fix a
 This section documents the security baseline for this repository, as required for legal and compliance review.
 
 **No automatic outbound network calls**
-The marketplace infrastructure and all plugins operate locally. No plugin makes outbound network calls, telemetry uploads, crash reports, or update checks without explicit user-granted runtime permission through Claude Code's standard permission model. Every file access, bash command, and MCP tool invocation requires user approval at runtime.
+The marketplace infrastructure and all plugins operate locally. No plugin makes outbound network calls, telemetry uploads, crash reports, or update checks without explicit user-granted runtime permission through Cursor's standard permission model. Every file access, bash command, and MCP tool invocation requires user approval at runtime.
 
 **No hardcoded credentials or tokens**
 The repository contains no hardcoded API keys, tokens, passwords, or credentials. All configuration examples use clearly marked placeholders (e.g. `YOUR_VOYAGEAI_KEY`). No `.env` files or credential files are committed.

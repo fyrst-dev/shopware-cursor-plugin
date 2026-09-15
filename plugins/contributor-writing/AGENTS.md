@@ -6,7 +6,6 @@
 plugins/contributor-writing/
 ├── .cursor-plugin/plugin.json    # Plugin metadata
 ├── CHANGELOG.md                  # Version history
-├── CLAUDE.md                     # Points to AGENTS.md
 ├── AGENTS.md                     # This file
 ├── README.md                     # User documentation
 ├── references/
@@ -97,5 +96,5 @@ plugins/contributor-writing/
 - commit-message-writing is output-only — no file writes, no git operations beyond read-only
 - Branch/PR detection (get branch, look up PR, identify target, route) is shared across pr-description-writing, feature-branch-pr-writing, and commit-message-writing via `references/branch-and-pr-detection.md` copies. Diff gathering remains skill-specific.
 - commit-message-writing only runs branch/PR detection in squash mode; branch mode skips it entirely
-- commit-message-writing persists scope mappings to Claude's native project memory, not custom files
+- commit-message-writing persists scope mappings to Cursor Memories, not custom files
 - commit-message-writing embeds anti-slop rules in its `references/writing-rules.md`

@@ -63,8 +63,8 @@ body:
   - type: textarea
     id: user-request
     attributes:
-      label: "Your Request to Claude"
-      description: "What did you ask Claude to do that should have triggered (or incorrectly triggered) this skill?"
+      label: "Your Request to the Agent"
+      description: "What did you ask the agent to do that should have triggered (or incorrectly triggered) this skill?"
       placeholder: |
         "Review the comments in src/Services/ and improve them"
         "Generate a commit message for my staged changes"
@@ -157,7 +157,7 @@ body:
       description: "Provide step-by-step instructions to reproduce the issue"
       placeholder: |
         1. Create a file with [specific code pattern]
-        2. Ask Claude to [specific request]
+        2. Ask the agent to [specific request]
         3. Skill produces [incorrect result]
         4. Expected [correct result]
     validations:
@@ -207,16 +207,16 @@ body:
     id: plugin-version
     attributes:
       label: "Plugin Version"
-      description: "Run `/plugin list` and paste the version shown for this plugin"
+      description: "Check **Customize** and paste the version shown for this plugin"
       placeholder: "e.g., comment-review@1.2.0"
     validations:
       required: true
 
   - type: input
-    id: claude-version
+    id: cursor-version
     attributes:
       label: "Cursor Version"
-      description: "Run `claude --version` and paste the output"
+      description: "Open Cursor **Help → About** and paste the version"
       placeholder: "e.g., 0.1.23"
     validations:
       required: true
@@ -268,4 +268,4 @@ body:
         - Link to related issues
         - Patterns (e.g., "only fails with nested functions")
         - Custom configuration files
-        - Claude's full response showing skill invocation
+        - The agent's full response showing skill invocation

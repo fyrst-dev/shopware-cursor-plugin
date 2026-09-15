@@ -80,7 +80,7 @@ Include 2-4 options. Best guess first, historical near-matches in the middle, "O
 
 ## Step 4: Persist to Project Memory
 
-After a scope is confirmed (user-selected or HIGH confidence), save the scope-to-path mapping as a project memory through Claude's native memory system if:
+After a scope is confirmed (user-selected or HIGH confidence), save the scope-to-path mapping as a Cursor Memory if:
 - The scope is not already known in memory
 - The mapping is non-obvious (sub-area scopes, historical variants)
 

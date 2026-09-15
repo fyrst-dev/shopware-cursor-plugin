@@ -54,7 +54,7 @@ Status: unavailable
 Failed gates: <list of gates that failed>
 Daemon status (raw): <verbatim daemon_status payload>
 Remediation:
-  - status != "ready" → run the setup diagnostic below; restart Claude Code if the MCP server did not load
+  - status != "ready" → run the setup diagnostic below; reload the Cursor window if the MCP server did not load
   - query_ready == false → if `scan_progress.is_scanning` is true, a scan is running: wait and retry; otherwise run `CHUNKHOUND_DB_EXECUTE_TIMEOUT=120 chunkhound index` in the project root
   - scan_error is set → read the scan_error message; re-run `CHUNKHOUND_DB_EXECUTE_TIMEOUT=120 chunkhound index`
   - embeddings_missing → re-run `CHUNKHOUND_DB_EXECUTE_TIMEOUT=120 chunkhound index` with an embedding provider configured in `.chunkhound.json` (forced reindex; embeddings are not added retroactively to existing chunks)
@@ -97,4 +97,4 @@ Summarize findings as a checklist, one line per component:
   }
   ```
 
-- **MCP tools unavailable**: restart Claude Code after plugin installation.
+- **MCP tools unavailable**: reload the Cursor window after plugin installation.

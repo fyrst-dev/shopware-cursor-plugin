@@ -1,6 +1,6 @@
 # CI Failure Interpretation
 
-Knowledge skill for interpreting CI failure logs from Shopware GitHub Actions workflows. Teaches Claude how to read tool-specific output formats, filter noise, and extract the actual root cause from job logs.
+Knowledge skill for interpreting CI failure logs from Shopware GitHub Actions workflows. Teaches the agent how to read tool-specific output formats, filter noise, and extract the actual root cause from job logs.
 
 ## ⚡ Quick Start
 
@@ -22,7 +22,7 @@ Interpret these CI logs
 
 ## 🔬 What It Does
 
-CI job logs are 90-99.8% noise (setup steps, progress bars, caching, Docker pulls, cleanup). This skill provides pure knowledge that teaches Claude:
+CI job logs are 90-99.8% noise (setup steps, progress bars, caching, Docker pulls, cleanup). This skill provides pure knowledge that teaches the agent:
 
 1. **Tool identification** — Map job names and output signatures to the specific tool that produced the log
 2. **Noise filtering** — Recognize setup, caching, and teardown output that is never the root cause

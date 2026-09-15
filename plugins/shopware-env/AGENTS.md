@@ -5,11 +5,11 @@
 This plugin provides:
 - **One MCP Server** via `mcp.json`:
   - `lifecycle-tooling` — 8 tools for dependencies, database, frontend builds, and plugin management
-- **SessionStart Hook** via `hooks/hooks.json`:
+- **sessionStart Hook** via `hooks/hooks.json`:
   - Injects lifecycle tool directives into conversation context at session start
   - Prompt maintained in `hooks/prompts/mcp-tool-directives.md`
-  - Outputs JSON `additionalContext` format
-- **PreToolUse Hook** via `hooks/hooks.json`:
+  - Outputs JSON `{ "additional_context": ... }` format
+- **beforeShellExecution Hook** via `hooks/hooks.json`:
   - Blocks bash commands that should use lifecycle MCP tools instead
   - Blocks: `composer install/update`, `npm install/ci`, `bin/console system:install`, `bin/console plugin:create`, `bin/console plugin:install/refresh/activate`, `bin/console bundle:dump`, `bin/console assets:install`, `bin/console feature:dump`, `bin/console framework:schema:dump`, `bin/console theme:compile`
   - Configurable via `enforce_mcp_tools: false` in `.mcp-php-tooling.json`
@@ -23,17 +23,16 @@ This plugin provides:
 plugins/shopware-env/
 ├── README.md                                      # User documentation
 ├── AGENTS.md                                      # LLM navigation guide (this file)
-├── CLAUDE.md                                      # Points to AGENTS.md
 ├── CHANGELOG.md                                   # Version history
 ├── LICENSE                                        # MIT license
 ├── mcp.json                                      # MCP server registration (lifecycle-tooling)
 │
 ├── hooks/                                         # HOOKS (MCP tool enforcement)
-│   ├── hooks.json                                 # Hook configuration (SessionStart + PreToolUse)
+│   ├── hooks.json                                 # Hook configuration (sessionStart + beforeShellExecution)
 │   ├── prompts/
-│   │   └── mcp-tool-directives.md                 # SessionStart prompt: lifecycle tool listing and usage rules
+│   │   └── mcp-tool-directives.md                 # sessionStart prompt: lifecycle tool listing and usage rules
 │   └── scripts/
-│       ├── session-start.sh                       # SessionStart hook: reads prompt file, checks enforcement, outputs JSON
+│       ├── session-start.sh                       # sessionStart hook: reads prompt file, checks enforcement, outputs JSON
 │       ├── check-lifecycle-tools.sh               # Blocks composer, npm, bin/console lifecycle commands
 │       └── lib/
 │           └── common.sh                          # Shared: parse_hook_input(), load_mcp_config(), block_tool()
@@ -105,13 +104,13 @@ source "${SERVER_DIR}/lib/database.sh"
 ### Hook Flow
 
 ```
-SessionStart:
+sessionStart:
   session-start.sh
     → reads hooks/prompts/mcp-tool-directives.md
     → checks enforce_mcp_tools in .mcp-php-tooling.json
-    → outputs JSON additionalContext with directive text (or empty if enforcement disabled)
+    → outputs JSON additional_context with directive text (or empty if enforcement disabled)
 
-PreToolUse (Bash matcher):
+beforeShellExecution (Bash matcher):
   check-lifecycle-tools.sh
     → parse_hook_input() (from lib/common.sh)
     → load_mcp_config("php-tooling") — reads enforce_mcp_tools flag
@@ -150,8 +149,8 @@ BATS tests are in `plugin-tests/shopware-env/`:
 |-------------------------|--------------------------------------------------------------------------|
 | `lifecycle_tools.bats`  | Tool command construction for all 8 tools across environments            |
 | `config_fallback.bats`  | Config-wins resolution, arg fallback, missing config handling            |
-| `session_start.bats`    | SessionStart hook output, enforcement toggle                             |
-| `hook_enforcement.bats` | PreToolUse blocking patterns (composer, npm, bin/console commands)       |
+| `session_start.bats`    | sessionStart hook output, enforcement toggle                             |
+| `hook_enforcement.bats` | beforeShellExecution blocking patterns (composer, npm, bin/console commands) |
 
 Run tests:
 ```bash
@@ -164,7 +163,7 @@ Run tests:
 |-------------------------------------|----------------------------------------------|-------------------------------------------------------|
 | Add a new lifecycle tool            | `mcp-server-lifecycle/lib/<tool>.sh`         | `tool_<name>()`, `resolve_lifecycle_env()`, `exec_command()` |
 | Register new tool schema            | `mcp-server-lifecycle/tools.json`            | JSON Schema Draft 7, `inputSchema`                    |
-| Edit SessionStart prompt            | `hooks/prompts/mcp-tool-directives.md`       | Plain markdown, read by `session-start.sh`            |
+| Edit sessionStart prompt            | `hooks/prompts/mcp-tool-directives.md`       | Plain markdown, read by `session-start.sh`            |
 | Add blocked bash pattern            | `hooks/scripts/check-lifecycle-tools.sh`     | `block_tool()`, grep regex pattern                    |
 | Modify shared hook logic            | `hooks/scripts/lib/common.sh`                | `parse_hook_input()`, `load_mcp_config()`, `block_tool()` |
 | Disable hook enforcement            | `.mcp-php-tooling.json`                      | `enforce_mcp_tools: false`                            |

@@ -4,9 +4,7 @@ Structuring skill for Markdown documentation surfaces in Shopware repositories. 
 
 ## 📦 Installation
 
-```bash
-/plugin install shopware-documentation@shopware-ai-coding-tools
-```
+Install `shopware-documentation` from **Customize** after adding this repo as a Cursor team marketplace (track **`main`**). See [docs/cursor-setup.md](../../docs/cursor-setup.md).
 
 ## ⚡ Quick Start
 

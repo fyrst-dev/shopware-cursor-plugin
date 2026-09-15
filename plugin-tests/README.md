@@ -1,6 +1,6 @@
 # Plugin Tests
 
-BATS tests for Claude Code plugin hook scripts, MCP tool functions, and shared modules.
+BATS tests for Cursor plugin hook scripts, MCP tool functions, and shared modules.
 
 ## ⚡ Quick Start
 

@@ -1,6 +1,6 @@
 # Agent Skills Export — Technical Reference
 
-Python CLI tool that transforms Claude Code skills into portable ZIP packages following the [Agent Skills](https://agentskills.io) specification.
+Python CLI tool that transforms marketplace skills into portable ZIP packages following the [Agent Skills](https://agentskills.io) specification.
 
 ## Project Structure
 

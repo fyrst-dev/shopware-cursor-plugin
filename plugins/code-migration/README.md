@@ -13,7 +13,7 @@ Migrates a plugin's or app-server extension's XML configuration to PHP before Sh
 > [!NOTE]
 > A plugin's `packages/**` config is loaded by nothing — only Shopware's own core bundles call the loader that reads it — so neither the dump diff nor the deprecation gate can observe those files, and the skill reports a packages row as migrated with manual review instead of verified.
 
-**Method:** strict 1:1 translation (no autowiring, no renames, no reordering), with correctness proven rather than assumed. Before the first edit and again after the last one, Claude clears the cache and takes four dumps per environment — the container plain, with `--show-hidden`, and with `--parameters`, plus the router — each as `debug:container` / `debug:router` with `--format=json`, and writes each one straight to a file under `var/xml-migration/` instead of into the conversation. The environment is selected on the console command itself (`--env=<env>` in a shell), never with an `APP_ENV` variable in front of it: the command's own arguments survive the docker, ddev, or vagrant wrapper, while a variable in front of the command does not. Three bundled scripts carry the deterministic parts around those dumps:
+**Method:** strict 1:1 translation (no autowiring, no renames, no reordering), with correctness proven rather than assumed. Before the first edit and again after the last one, the agent clears the cache and takes four dumps per environment — the container plain, with `--show-hidden`, and with `--parameters`, plus the router — each as `debug:container` / `debug:router` with `--format=json`, and writes each one straight to a file under `var/xml-migration/` instead of into the conversation. The environment is selected on the console command itself (`--env=<env>` in a shell), never with an `APP_ENV` variable in front of it: the command's own arguments survive the docker, ddev, or vagrant wrapper, while a variable in front of the command does not. Three bundled scripts carry the deterministic parts around those dumps:
 
 | Script                   | Does                                                                                                                                      |
 |--------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
@@ -32,9 +32,7 @@ The verdict in the report comes from `verify-dumps.sh`, not from reading a diff.
 
 ## 📦 Installation
 
-```bash
-/plugin install code-migration@shopware-ai-coding-tools
-```
+Install `code-migration` from **Customize** after adding this repo as a Cursor team marketplace (track **`main`**). See [docs/cursor-setup.md](../../docs/cursor-setup.md).
 
 ## 📌 Requirements
 

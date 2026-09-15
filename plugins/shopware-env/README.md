@@ -28,16 +28,14 @@ Bootstrap and maintain Shopware development environments. Exposes the full lifec
 
 ### Installation
 
-```bash
-/plugin install shopware-env@shopware-ai-coding-tools
-```
+Install `shopware-env` from **Customize** after adding this repo as a Cursor team marketplace (track **`main`**). See [docs/cursor-setup.md](../../docs/cursor-setup.md).
 
 > [!IMPORTANT]
-> Restart Claude Code after installation so the `lifecycle-tooling` MCP server comes up.
+> Reload the window after installation so the `lifecycle-tooling` MCP server comes up. Enable it under **Customize → MCP**.
 
 ### First-Time Setup
 
-After restarting, ask Claude to set up your environment:
+After reloading, ask the agent to set up your environment:
 
 ```
 Set up a Shopware development environment
@@ -82,7 +80,7 @@ If `dev-tooling` is already installed, its tools (`vite_build`, `webpack_build`)
 
 ## 🛡️ MCP Tool Enforcement
 
-A `PreToolUse` hook intercepts bash commands that lifecycle MCP tools should handle instead. Blocked patterns:
+A `beforeShellExecution` hook intercepts bash commands that lifecycle MCP tools should handle instead. Blocked patterns:
 
 | Bash Command                                                                         | Use Instead                                           |
 |--------------------------------------------------------------------------------------|-------------------------------------------------------|
@@ -96,7 +94,7 @@ A `PreToolUse` hook intercepts bash commands that lifecycle MCP tools should han
 
 To disable enforcement, add `"enforce_mcp_tools": false` to `.mcp-php-tooling.json`.
 
-A `SessionStart` hook injects lifecycle tool directives into the session context at startup so Claude knows which tools are available without being asked.
+A `sessionStart` hook injects lifecycle tool directives into the session context at startup so the agent knows which tools are available without being asked.
 
 ## 🚫 Not Supported / Out of Scope
 

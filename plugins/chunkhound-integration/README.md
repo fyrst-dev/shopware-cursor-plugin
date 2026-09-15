@@ -1,6 +1,6 @@
 # ChunkHound Integration
 
-Semantic code research for Claude Code using [ChunkHound's](https://chunkhound.ai/) multi-hop search and LLM synthesis.
+Semantic code research for Cursor using [ChunkHound's](https://chunkhound.ai/) multi-hop search and LLM synthesis.
 
 ## 🔬 What is ChunkHound?
 
@@ -13,11 +13,7 @@ Unlike simple grep searches, ChunkHound understands code semantically - it can a
 
 ## 📦 Setup
 
-The quickest way to get started is the interactive setup skill. Install the `plugin-setup` plugin, then ask Claude:
-
-```bash
-/plugin install plugin-setup@shopware-ai-coding-tools
-```
+The quickest way to get started is the interactive setup skill. Install the `plugin-setup` plugin from **Customize**, then ask the agent:
 
 ```
 Help me set up chunkhound-integration
@@ -57,7 +53,7 @@ Create `.chunkhound.json` in one of the supported locations.
 {
   "database": {
     "provider": "duckdb",
-    "path": ".claude/.chunkhound"
+    "path": ".cursor/.chunkhound"
   },
   "llm": {
     "provider": "claude-code-cli",
@@ -104,7 +100,7 @@ The plugin auto-discovers `.chunkhound.json` in multiple locations (last match w
 | `.tabnine/.chunkhound.json` | Tabnine                          |
 | `.claude/.chunkhound.json`  | Claude Code (highest priority)   |
 
-**Recommended for Claude Code users**: Place config in `.claude/.chunkhound.json` to keep Claude-related files together.
+**Recommended for Cursor users**: Place config in `.cursor/.chunkhound.json` to keep Cursor-related files together.
 
 **Environment variable override**: Set `CHUNKHOUND_CONFIG_FILE` to an absolute path for explicit control.
 
@@ -117,9 +113,9 @@ CHUNKHOUND_DB_EXECUTE_TIMEOUT=120 chunkhound index
 
 This creates a `.chunkhound/` directory with the vector database. The `CHUNKHOUND_DB_EXECUTE_TIMEOUT=120` prefix raises ChunkHound's database operation timeout to 120 seconds — see [Database operation timeout](#database-operation-timeout) for why.
 
-### 4. Restart Claude Code
+### 4. Reload the window
 
-After plugin installation, restart Claude Code to load the MCP server.
+After plugin installation, reload the window and enable the ChunkHound MCP server under **Customize → MCP**.
 
 ## 💡 Usage
 
@@ -202,9 +198,9 @@ Markdown is in ChunkHound's parser set, but the skill treats documentation as a 
 
 ### "MCP tools not available"
 
-1. Check plugin is enabled: `/plugin list`
-2. Verify MCP status: `/mcp`
-3. Restart Claude Code (required after plugin installation)
+1. Check the plugin is enabled under **Customize**
+2. Verify MCP status under **Customize → MCP**
+3. Reload the window (required after plugin installation)
 
 ### "No index found"
 
@@ -239,7 +235,7 @@ ChunkHound's full configuration schema lives in the [ChunkHound configuration do
 
 ### Database provider
 
-Use the ChunkHound default `duckdb`. Set `database.path` to `.claude/.chunkhound` to keep all Claude-related files together.
+Use the ChunkHound default `duckdb`. Set `database.path` to `.cursor/.chunkhound` to keep Cursor-related files together.
 
 ### Database operation timeout
 
@@ -250,7 +246,7 @@ The plugin sets `CHUNKHOUND_DB_EXECUTE_TIMEOUT=120` in the MCP server registrati
 > [!IMPORTANT]
 > ChunkHound serializes parallel MCP clients onto a single DuckDB writer connection inside its background daemon. Running multiple ChunkHound queries in parallel (for example, from several subagents at once) does not reduce wall-clock time — the calls queue at the daemon — and consumes extra agent spawn overhead and tokens. Prefer sequential invocations.
 
-The plugin enforces this opinion at runtime via a SessionStart hook that injects a directive instructing the model to dispatch any subagent performing ChunkHound operations sequentially. The directive applies to the bundled `code-researcher` agent and to any other subagent (general-purpose or custom) whose task involves `search` or `code_research`. Use sequential dispatch even when ad-hoc parallelism is technically possible.
+The plugin enforces this opinion at runtime via a sessionStart hook that injects a directive instructing the model to dispatch any subagent performing ChunkHound operations sequentially. The directive applies to the bundled `code-researcher` agent and to any other subagent (general-purpose or custom) whose task involves `search` or `code_research`. Use sequential dispatch even when ad-hoc parallelism is technically possible.
 
 ### Realtime backend
 

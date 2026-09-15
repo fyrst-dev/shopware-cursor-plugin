@@ -4,14 +4,9 @@ Two skills for analyzing GitHub pull requests and issues in depth. Given a PR or
 
 ## ⚡ Quick Start
 
-Install the plugin along with its companion:
+Install `chunkhound-integration` and `code-contribution-analysis` from **Customize** after adding this repo as a Cursor team marketplace (track **`main`**). See [docs/cursor-setup.md](../../docs/cursor-setup.md).
 
-```bash
-/plugin install chunkhound-integration@shopware-ai-coding-tools
-/plugin install code-contribution-analysis@shopware-ai-coding-tools
-```
-
-Then ask Claude to analyze a PR or issue:
+Then ask the agent to analyze a PR or issue:
 
 ```
 Analyze PR #4521 in shopware/shopware
@@ -57,32 +52,6 @@ GitHub data (PR and issue metadata, diffs, reviews, comments) is fetched using w
    - **Stage 3** (optional) — deep dive on cross-component effects
 4. Produces a structured text analysis
 
-## 🔗 Integration with Applications
-
-The skills are designed to work both standalone in Claude Code sessions **and** as building blocks for Claude Agent SDK applications. Applications can load this plugin via the Agent SDK `plugins` option:
-
-```typescript
-import { query } from "@anthropic-ai/claude-agent-sdk";
-
-for await (const message of query({
-  prompt: "Analyze PR #4521 in shopware/shopware",
-  options: {
-    plugins: [
-      { type: "local", path: "/path/to/chunkhound-integration" },
-      { type: "local", path: "/path/to/code-contribution-analysis" }
-    ],
-    allowedTools: [
-      "Skill",
-      "code_research, search, daemon_status"
-    ]
-  }
-})) {
-  // Claude autonomously invokes the pr-analyzing skill
-}
-```
-
-The skill works the same way in both contexts — the only difference is who is asking.
-
 ## 🧩 Passing Triage Context
 
 Both skills accept optional context from the caller about why analysis was requested. A developer can say:
@@ -91,7 +60,7 @@ Both skills accept optional context from the caller about why analysis was reque
 Analyze PR #4521 — it was flagged because it touches 12 files across Checkout and Payment
 ```
 
-An application can programmatically pass the same kind of context in its prompt. The skills use this as a hint for research focus, not as required input.
+A caller can pass the same kind of context in its prompt. The skills use this as a hint for research focus, not as required input.
 
 ## 🏗️ Developer Guide
 

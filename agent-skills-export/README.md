@@ -1,6 +1,6 @@
 # Agent Skills Export
 
-Build [Agent Skills](https://agentskills.io)-compliant ZIP packages from Claude Code skills. Transforms SKILL.md frontmatter, enriches metadata from plugin.json, validates against the spec, and produces portable ZIPs usable in Cursor, Codex, Gemini, and other compatible tools.
+Build [Agent Skills](https://agentskills.io)-compliant ZIP packages from marketplace skills. Transforms SKILL.md frontmatter, enriches metadata from plugin.json, validates against the spec, and produces portable ZIPs usable in Cursor, Codex, Gemini, and other compatible tools.
 
 ## ⚡ Quick Start
 
@@ -29,7 +29,7 @@ Skills opt in for export by placing an empty `.agent-skills` marker file next to
 $ build-agent-skill --help
 Usage: build-agent-skill [OPTIONS] SKILL_DIR [OUTPUT_DIR]
 
-  Build an Agent Skills-compliant ZIP from a Claude Code skill.
+  Build an Agent Skills-compliant ZIP from a marketplace skill.
 
 Arguments:
   SKILL_DIR   Path to the skill directory containing SKILL.md  [required]

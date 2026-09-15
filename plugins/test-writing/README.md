@@ -15,7 +15,7 @@ Generate and validate PHPUnit unit tests for Shopware 6. Automatically analyzes 
 - **Coverage Exclusion Offer**: When a file is too trivial to test, offers to add it to `phpunit.xml.dist` exclusions to keep coverage reports clean
 - **Shopware Stubs**: Uses StaticEntityRepository, StaticSystemConfigService, Generator
 - **MCP Rule Server**: Dynamic rule discovery with `get_rules` for context-efficient reviews
-- **Team-Based Consensus Review**: The single Workflow-based reviewer for unit, integration, and migration tests over one mixed manifest — `test_type` (resolved by path) routes each file to its rule catalog, per-type reviewing sub-skill, decomposition track, and adversary lenses. 3 independent reviewers per unit and K independent per-file adversaries (one per lens — tautology / weak-assertion / missed-coverage — each reading a single file). Oversized test classes are decomposed by rule track — method-shards plus a whole-class or body-free structural-digest track — so large files no longer overflow the context window, and large changesets are partitioned into review shards that run as a **campaign of sequential workflow launches** with every stage result persisted to disk, so an interrupted campaign resumes from where it stopped. Stages: independent review + peer reconciliation per shard (consensus), a whole-changeset signals run (cross-file consistency, adoption), and a cost-gated adversarial run (red team, defense, hard-capped arbitration). Deterministic cross-cutting SUT-coverage map and informational integration-to-unit placement flags computed at merge. Findings carry a method-primary locator, a per-finding branch-scope flag (`branch_touched`) on diff runs, a source-change escalation when a fix cannot be made in the test alone, and deletion accounting (`deleted_methods`, `removed_assertions`) naming what a remediation removes. A finding is identified as `rule_id|method`, so reviewers describing one defect differently pool their votes instead of fragmenting into contested singletons. 2-of-3 majority consensus per track, and a review unit that comes back with fewer than two live reviewer stances fails its shard rather than reporting a clean pass. Strictly read-only (see [Team Review](#team-review) below)
+- **Team-Based Consensus Review**: The single Cursor Task-based reviewer for unit, integration, and migration tests over one mixed manifest — `test_type` (resolved by path) routes each file to its rule catalog, per-type reviewing sub-skill, decomposition track, and adversary lenses. 3 independent reviewers per unit and K independent per-file adversaries (one per lens — tautology / weak-assertion / missed-coverage — each reading a single file). Oversized test classes are decomposed by rule track — method-shards plus a whole-class or body-free structural-digest track — so large files no longer overflow the context window, and large changesets are partitioned into review shards that run as a **campaign of sequential Task launches** with every stage result persisted to disk, so an interrupted campaign resumes from where it stopped. Stages: independent review + peer reconciliation per shard (consensus), a whole-changeset signals run (cross-file consistency, adoption), and a cost-gated adversarial run (red team, defense, hard-capped arbitration). Deterministic cross-cutting SUT-coverage map and informational integration-to-unit placement flags computed at merge. Findings carry a method-primary locator, a per-finding branch-scope flag (`branch_touched`) on diff runs, a source-change escalation when a fix cannot be made in the test alone, and deletion accounting (`deleted_methods`, `removed_assertions`) naming what a remediation removes. A finding is identified as `rule_id|method`, so reviewers describing one defect differently pool their votes instead of fragmenting into contested singletons. 2-of-3 majority consensus per track, and a review unit that comes back with fewer than two live reviewer stances fails its shard rather than reporting a clean pass. Strictly read-only (see [Team Review](#team-review) below)
 - **Migration Test Generation**: Analyzes migration source classes (SQL operations, updateDestructive logic) to generate pattern-appropriate migration tests
 - **Migration Test Reviewing**: 8 migration-specific rules covering idempotency, cleanup, assertion patterns, and Shopware conventions
 - **Integration Test Generation**: Analyzes source classes to detect supported integration patterns (controller/route, message-handler, indexer, DAL-flow, multi-service) and generates `IntegrationTestBehaviour`-based tests. Defers to unit test generation when the SUT is unit-shape
@@ -26,14 +26,12 @@ Generate and validate PHPUnit unit tests for Shopware 6. Automatically analyzes 
 
 ### Installation
 
-```bash
-/plugin install test-writing@shopware-ai-coding-tools
-```
+Install `test-writing` from **Customize** after adding this repo as a Cursor team marketplace (track **`main`**). See [docs/cursor-setup.md](../../docs/cursor-setup.md).
 
 > [!IMPORTANT]
 > - `dev-tooling` plugin must be installed (MCP server reference is bundled)
 > - `.mcp-php-tooling.json` configuration file in your project root (see Configuration below)
-> - Restart Claude Code after installation
+> - Reload the window after installation. Enable MCP servers under **Customize → MCP**.
 
 ### Basic Usage
 
@@ -48,7 +46,7 @@ The `phpunit-unit-test-writing` skill will be automatically invoked.
 
 ### Team Review
 
-Run a consensus-based review with multiple independent reviewers. The team reviewer is the single Workflow-based reviewer for **unit, integration, and migration** tests — it reviews a mixed selection in one run, routing each file by its test type (`tests/unit/`, `tests/integration/`, `tests/migration/`):
+Run a consensus-based review with multiple independent reviewers. The team reviewer is the single Cursor Task-based reviewer for **unit, integration, and migration** tests — it reviews a mixed selection in one run, routing each file by its test type (`tests/unit/`, `tests/integration/`, `tests/migration/`):
 
 ```
 Review tests in tests/unit/Core/Content/ with a team
@@ -59,7 +57,7 @@ Team review the tests changed in this PR
 Accepts file paths, directories, commits, branches, and PRs as input — a single PR touching all three test families becomes one campaign. The review is strictly read-only; it never mutates the tests. Beyond per-file findings it produces a cross-cutting **SUT-coverage map** (the same source class covered by more than one test file — across or within test types) and informational **integration-to-unit placement flags** that point at the standalone `phpunit-integration-to-unit-migrating` skill — it never migrates files itself.
 
 > [!WARNING]
-> Team review runs multi-agent Claude Code Workflows. It spawns substantially more agents than a single-reviewer pass — 3 reviewers per review unit (a small file, or each method-shard and whole-class set of a decomposed large file), up to 3 adversaries per file (one per active lens, in both the impression and red-team waves; fewer on the `lean` preset), and a cross-file consistency agent — and consumes significantly more tokens. Large changesets run as several sequential review shards (each sized to finish within one usage-limit window) with results persisted between launches, and the opus-priced adversarial stage (red team + arbitration) only runs after an explicit cost-informed confirmation. A run-time **preset** (`deep` / `standard` / `lean`) and **model combo** (`sonnet-opus` / `haiku-opus` / `haiku-sonnet`) trade thoroughness against cost. The skill asks for confirmation before starting and offers the standard single-reviewer pass as an alternative.
+> Team review runs a Cursor Task campaign. It spawns substantially more agents than a single-reviewer pass — 3 reviewers per review unit (a small file, or each method-shard and whole-class set of a decomposed large file), up to 3 adversaries per file (one per active lens, in both the impression and red-team waves; fewer on the `lean` preset), and a cross-file consistency agent — and consumes significantly more tokens. Large changesets run as several sequential review shards (each sized to finish within one usage-limit window) with results persisted between launches, and the opus-priced adversarial stage (red team + arbitration) only runs after an explicit cost-informed confirmation. A run-time **preset** (`deep` / `standard` / `lean`) and **model combo** (`sonnet-opus` / `haiku-opus` / `haiku-sonnet`) trade thoroughness against cost. The skill asks for confirmation before starting and offers the standard single-reviewer pass as an alternative.
 
 ### Scoped Review
 
@@ -478,11 +476,7 @@ status: AUDITED | MIGRATED | DECLINED | FAILED
 
 ### Required Plugin
 
-The `dev-tooling` plugin must be installed (this plugin bundles an MCP server reference to it):
-
-```bash
-/plugin install dev-tooling@shopware-ai-coding-tools
-```
+The `dev-tooling` plugin must be installed (this plugin bundles an MCP server reference to it). Install it from **Customize** as well.
 
 ### Project Configuration
 
@@ -496,7 +490,7 @@ This plugin bundles a `test-rules` MCP server that serves test writing rules. Th
 
 **Tools:**
 - `get_rules` — Get full rule content by ID or metadata filters (test_type, test_category, group, scope, enforce)
-- `build_rule_package` — Render a rule catalog to a file in plugin storage and return its path. With no arguments it renders the unit-review catalog (convention, design, unit, isolation, provider). Pass `test_type` alone (no `group`) to render that type's *composed* catalog (integration, migration) — its own group plus every convention/design/isolation/provider rule declaring the type. Pass `group` with `test_type` to narrow to a single non-composed group instead (e.g. `group=placement, test_type=integration`, used only by the integration-to-unit migrating skill). Optional scope filters (`review_unit` / `test_category` / `scoped_review`) render a scoped subset under a scope-derived filename. The unified team review builds one composed catalog per test type present at composition time (via `test_type` alone) and passes them to the committed workflow script, which selects each agent's scoped rules from the file's per-type catalog inline, so agents apply only their per-track rules without fetching them per agent.
+- `build_rule_package` — Render a rule catalog to a file in plugin storage and return its path. With no arguments it renders the unit-review catalog (convention, design, unit, isolation, provider). Pass `test_type` alone (no `group`) to render that type's *composed* catalog (integration, migration) — its own group plus every convention/design/isolation/provider rule declaring the type. Pass `group` with `test_type` to narrow to a single non-composed group instead (e.g. `group=placement, test_type=integration`, used only by the integration-to-unit migrating skill). Optional scope filters (`review_unit` / `test_category` / `scoped_review`) render a scoped subset under a scope-derived filename. The unified team review builds one composed catalog per test type present at composition time (via `test_type` alone) and passes them into each Task campaign, which selects each agent's scoped rules from the file's per-type catalog inline, so agents apply only their per-track rules without fetching them per agent.
 
 ## 📚 Documentation
 

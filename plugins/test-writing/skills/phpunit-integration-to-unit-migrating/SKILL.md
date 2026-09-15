@@ -172,7 +172,7 @@ status: AUDITED | MIGRATED | DECLINED | FAILED
 
 ### MCP Tool Unavailability
 
-If `get_rules` is unavailable, abort with: "test-rules MCP server not available — ensure the test-writing plugin is installed and Claude Code was restarted." Do not attempt the audit from memory; the rules are the load-bearing reasoning prompts.
+If `get_rules` is unavailable, abort with: "test-rules MCP server not available — ensure the test-writing plugin is installed and the Cursor window was reloaded." Do not attempt the audit from memory; the rules are the load-bearing reasoning prompts.
 
 ### SUT Contract Unclear
 

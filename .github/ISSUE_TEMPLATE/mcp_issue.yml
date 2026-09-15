@@ -97,7 +97,7 @@ body:
     id: mcp-config
     attributes:
       label: "MCP Configuration"
-      description: "Paste relevant configuration files (.mcp.json, .mcp-php-tooling.json, etc.)"
+      description: "Paste relevant configuration files (mcp.json, .mcp-php-tooling.json, etc.)"
       placeholder: |
         {
           "mcpServers": {
@@ -204,10 +204,10 @@ body:
       label: "Steps to Reproduce"
       description: "Provide step-by-step instructions to reproduce the issue"
       placeholder: |
-        1. Install plugin with `/plugin install dev-tooling@shopware-ai-coding-tools`
+        1. Install `dev-tooling` from Customize
         2. Create config file `.mcp-php-tooling.json` with [settings]
         3. Reload Cursor
-        4. Ask Claude to run PHPStan analysis
+        4. Ask the agent to run PHPStan analysis
         5. Observe [incorrect behavior]
     validations:
       required: true
@@ -258,7 +258,6 @@ body:
       label: "Config Discovery Locations Checked"
       description: "For dev-tooling: which config locations were searched?"
       placeholder: |
-        - .claude/.mcp-php-tooling.json
         - .cursor/.mcp-php-tooling.json
         - .mcp-php-tooling.json
         - etc.
@@ -307,16 +306,16 @@ body:
     id: plugin-version
     attributes:
       label: "Plugin Version"
-      description: "Run `/plugin list` and paste the version shown for this plugin"
+      description: "Check **Customize** and paste the version shown for this plugin"
       placeholder: "e.g., dev-tooling@2.0.0"
     validations:
       required: true
 
   - type: input
-    id: claude-version
+    id: cursor-version
     attributes:
       label: "Cursor Version"
-      description: "Run `claude --version` and paste the output"
+      description: "Open Cursor **Help → About** and paste the version"
       placeholder: "e.g., 0.1.23"
     validations:
       required: true

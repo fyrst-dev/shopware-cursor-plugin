@@ -1,4 +1,4 @@
-"""Build Agent Skills-compliant ZIP packages from Claude Code skills."""
+"""Build Agent Skills-compliant ZIP packages from marketplace skills."""
 
 from .core import (
     build_skill,

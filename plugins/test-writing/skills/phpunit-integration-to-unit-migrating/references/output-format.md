@@ -117,6 +117,6 @@ DECLINED — no changes made. The audit report above is preserved for reference.
 | Reason | Suggestion |
 |--------|------------|
 | Scope contains no integration tests | Verify the scope. Use `Glob("tests/integration/**/*Test.php")` to list integration tests. |
-| test-rules MCP server not available | Ensure the test-writing plugin is installed and Claude Code was restarted. |
+| test-rules MCP server not available | Ensure the test-writing plugin is installed and the Cursor window was reloaded. |
 | Scope > 20 files | Narrow scope or proceed in batches by directory. |
 | All SUT contracts unclear | Refactor the tests for clarity (one SUT per test class, explicit `#[CoversClass]`) before re-running the audit. |

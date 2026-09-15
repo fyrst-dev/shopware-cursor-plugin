@@ -73,7 +73,7 @@ Read-only validation for CI/CD pipelines. Verifies that plugin versions are sync
 
 ### validate-cursor-plugins.sh
 
-Read-only validation that the Cursor marketplace lists the same plugins as Claude Code, each plugin has `.cursor-plugin/plugin.json`, MCP/hook path overrides resolve, and `test-writing` suppresses Cursor rule auto-discovery.
+Read-only validation that this is a Cursor-only marketplace: no Claude manifests remain, each plugin has `.cursor-plugin/plugin.json`, MCP plugins ship default `mcp.json` with `CURSOR_PLUGIN_ROOT`, hook plugins ship `hooks/hooks.json` with camelCase Cursor events, and `test-writing` suppresses Cursor rule auto-discovery.
 
 **Usage:**
 ```bash

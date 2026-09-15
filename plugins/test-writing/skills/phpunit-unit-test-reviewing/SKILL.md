@@ -226,7 +226,7 @@ When a test class contains both unit and integration patterns:
 ### MCP Tool Unavailability
 
 If `get_rules` is unavailable:
-- Report error: "test-rules MCP server not available — ensure the test-writing plugin is installed and Claude Code was restarted"
+- Report error: "test-rules MCP server not available — ensure the test-writing plugin is installed and the Cursor window was reloaded"
 - Do not fall back to hardcoded checks
 
 ## Status Values

@@ -203,7 +203,7 @@ If the test file or source class cannot be read:
 ### MCP Tool Unavailability
 
 If `get_rules` is unavailable:
-- Report error: "test-rules MCP server not available — ensure the test-writing plugin is installed and Claude Code was restarted"
+- Report error: "test-rules MCP server not available — ensure the test-writing plugin is installed and the Cursor window was reloaded"
 - Candidates from Phase 3 cannot be promoted without evidence — emit a `files` entry with no challenges, resurrections, or new_findings (endorsements only, if any), noting the limitation in the report handed back to the caller
 
 ### All Candidates Fail Promotion Gate

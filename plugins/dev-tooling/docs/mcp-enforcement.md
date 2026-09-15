@@ -1,6 +1,6 @@
 # MCP Tool Enforcement & Integration
 
-The plugin's value comes from Claude using the MCP tools instead of shelling out to `vendor/bin/phpstan` or `npm run lint`. Without help, Claude defaults to bash whenever it's faster to type, so this plugin layers hooks on top of the servers to keep it honest.
+The plugin's value comes from the agent using the MCP tools instead of shelling out to `vendor/bin/phpstan` or `npm run lint`. Without help, the agent defaults to bash whenever it's faster to type, so this plugin layers hooks on top of the servers to keep it honest.
 
 ## 🚫 Watch Mode
 
@@ -8,9 +8,9 @@ MCP is a synchronous request-response protocol. A long-running watcher like `npm
 
 ## 🛡️ Enforcement Hooks
 
-Three hooks work together. A **SessionStart** hook injects a directive at the top of every conversation that lists the available MCP tools and tells Claude to prefer them over bash; the prompt lives in `hooks/prompts/mcp-tool-directives.md` if you want to read or tweak it. A **PreToolUse** hook is the safety net: it intercepts bash commands that map to a known MCP tool and points Claude at the replacement, so even if the SessionStart directive got ignored or compacted away, the bad call gets caught before it runs. A **PostToolUse** hook watches `phpstan_analyze`. When it runs against specific files, it cross-references `phpstan-baseline.neon` (or `.php`) and surfaces a warning if any of the analyzed paths appear in the baseline, which usually means a baseline entry has gone stale. Full-project PHPStan runs skip the check because PHPStan validates the baseline natively there.
+Three hooks work together. A **sessionStart** hook injects a directive at the top of every conversation that lists the available MCP tools and tells the agent to prefer them over bash; the prompt lives in `hooks/prompts/mcp-tool-directives.md` if you want to read or tweak it. A **beforeShellExecution** hook is the safety net: it intercepts bash commands that map to a known MCP tool and points the agent at the replacement, so even if the sessionStart directive got ignored or compacted away, the bad call gets caught before it runs. A **postToolUse** hook watches `phpstan_analyze`. When it runs against specific files, it cross-references `phpstan-baseline.neon` (or `.php`) and surfaces a warning if any of the analyzed paths appear in the baseline, which usually means a baseline entry has gone stale. Full-project PHPStan runs skip the check because PHPStan validates the baseline natively there.
 
-The SessionStart and PreToolUse hooks honor `enforce_mcp_tools` and turn off when it's `false`. The PostToolUse baseline check ignores the flag and always runs.
+The sessionStart and beforeShellExecution hooks honor `enforce_mcp_tools` and turn off when it's `false`. The postToolUse baseline check ignores the flag and always runs.
 
 ### Disabling Enforcement
 

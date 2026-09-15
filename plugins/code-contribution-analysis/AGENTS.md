@@ -8,7 +8,6 @@ plugins/code-contribution-analysis/
 │   └── plugin.json               # Plugin manifest (name, version, metadata)
 ├── README.md                     # User documentation
 ├── AGENTS.md                     # LLM navigation guide (this file)
-├── CLAUDE.md                     # Points to AGENTS.md
 ├── CHANGELOG.md                  # Version history
 └── skills/
     ├── pr-analyzing/
@@ -47,7 +46,7 @@ The skills deliberately do not name a specific GitHub tool. They describe the fe
 
 1. **Pure skills, no runtime code** — The plugin contains only instruction files. All tool execution happens via MCP from companion plugins.
 
-2. **Standalone and embeddable** — The skills work identically whether invoked by a human in a Claude Code session or by a Claude Agent SDK application loading the plugin programmatically. There is no split between "interactive mode" and "batch mode."
+2. **Standalone in Cursor** — The skills work when a developer asks in chat. There is no split between "interactive mode" and "batch mode."
 
 3. **Incremental research** — ChunkHound queries are expensive. The skills use a staged approach (Stage 1 → Stage 2 → Stage 3) and proceed only when prior stages' findings are insufficient. This keeps simple analyses fast and deep analyses focused.
 
@@ -66,13 +65,7 @@ The tool usage patterns (GitHub for data, ChunkHound for research) and output st
 
 ## Integration Points
 
-### From Claude Code Sessions
-
 Users invoke the skills implicitly by asking natural-language questions that match the activation triggers in each skill's frontmatter `description`. No slash commands, no explicit invocation.
-
-### From Claude Agent SDK Applications
-
-Applications load the plugin via the Agent SDK `plugins` option along with the companion plugins. Claude autonomously invokes the skills when the prompt references a PR or issue number. See the README for a code example.
 
 ## External Dependencies
 

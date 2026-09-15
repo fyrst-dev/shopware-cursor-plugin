@@ -10,7 +10,7 @@ If you're working in the `shopware/shopware` monorepo, the `docker-compose` envi
 { "environment": "docker-compose" }
 ```
 
-Out of the box it picks the `web` service and its `/var/www/html` bind mount. The containers don't need to be running when Claude Code starts. Resolution happens lazily on the first tool call, which means you can start the stack later without restarting Claude.
+Out of the box it picks the `web` service and its `/var/www/html` bind mount. The containers don't need to be running when Cursor starts. Resolution happens lazily on the first tool call, which means you can start the stack later without reloading the window.
 
 Override any of the sub-fields if your setup diverges from the default:
 
@@ -78,7 +78,7 @@ Config is resolved in two stages. The environment variable wins if it's set, oth
 1. Environment variable: `MCP_PHP_TOOLING_CONFIG` / `MCP_JS_TOOLING_CONFIG`
 2. File discovery (deep-merged, later wins): project-root `.mcp-<prefix>.json` → `.aiassistant/` → `.amazonq/` → `.cline/` → `.cursor/` → `.kiro/` → `.windsurf/` → `.zed/` → `.claude/`
 
-A common pattern is to check a shared `.mcp-php-tooling.json` into git and keep a personal `.claude/.mcp-php-tooling.json` with your own overrides.
+A common pattern is to check a shared `.mcp-php-tooling.json` into git and keep a personal `.cursor/.mcp-php-tooling.json` with your own overrides.
 
 ## Environment Options
 
@@ -100,7 +100,7 @@ You need `bash` 4.0+, `jq`, and Node.js 20+ for the JS tools. The MCP servers do
 
 ## 🩺 Troubleshooting
 
-**MCP server not connecting.** Run `/mcp` to check the connection state. The most common cause is forgetting to restart Claude Code after installing the plugin. Also make sure `jq` is on `PATH`.
+**MCP server not connecting.** Check **Customize → MCP** for the connection state. The most common cause is forgetting to reload the window after installing the plugin. Also make sure `jq` is on `PATH`.
 
 **Docker Compose service not found.** The default service name is `web`. Override it with `"docker-compose": {"service": "<name>"}` if your stack uses something else.
 

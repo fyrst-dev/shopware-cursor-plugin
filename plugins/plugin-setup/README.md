@@ -1,14 +1,12 @@
 # Plugin Setup
 
-Interactive setup skills for plugins that ship a `SETUP.md`. Install this plugin alongside `dev-tooling` or `chunkhound-integration` and ask Claude to walk you through configuration. Uninstall it once setup is complete to keep the skill description surface small.
+Interactive setup skills for plugins that ship a `SETUP.md`. Install this plugin alongside `dev-tooling` or `chunkhound-integration` and ask the agent to walk you through configuration. Uninstall it once setup is complete to keep the skill description surface small.
 
 ## ⚡ Quick Start
 
-```bash
-/plugin install plugin-setup@shopware-ai-coding-tools
-```
+Install `plugin-setup` from **Customize** after adding this repo as a Cursor team marketplace (track **`main`**). See [docs/cursor-setup.md](../../docs/cursor-setup.md).
 
-Then ask Claude to set up the plugin you just installed:
+Then ask the agent to set up the plugin you just installed:
 
 ```
 Help me set up dev-tooling
@@ -22,7 +20,7 @@ Help me set up chunkhound-integration
 | `dev-tooling-setting-up`            | "set up dev-tooling"            | `dev-tooling`            |
 | `chunkhound-integration-setting-up` | "set up chunkhound-integration" | `chunkhound-integration` |
 
-Each skill checks prerequisites, creates or updates config files, pre-approves MCP tool permissions in `.claude/settings.local.json`, validates the result, and reports any remaining manual steps.
+Each skill checks prerequisites, creates or updates config files, validates the result, and reports any remaining manual steps. Cursor does not use `.claude/settings.local.json`.
 
 ## 🔗 How it stays in sync
 
