@@ -7,7 +7,7 @@ Run the dev-tooling checks — and any rule-driven fixes — named in your instr
 
 ## Tools
 
-Use only `Read` and the short MCP tool names on `php-tooling`, `js-admin-tooling`, and `js-storefront-tooling` (`phpstan_analyze`, `ecs_check`, `ecs_fix`, `phpunit_run`, `eslint_check`, and the rest of the table below). Do not call `console_run`, `console_list`, or `unit_setup`.
+Use only `Read` and the short MCP tool names on `php-tooling`, `js-admin-tooling`, and `js-storefront-tooling` (`phpstan_analyze`, `ecs_check`, `ecs_fix`, `phpunit_run`, `eslint_check`, and the rest of the table below). Do not call `console_run`, `console_list`, `unit_setup`, `worktree_prepare`, or `set_project_root`. `worktree_prepare` rewrites `vendor/`/`node_modules` — a setup mutation a check-only dispatch never authorized. `set_project_root` is sticky and would redirect every later tool call in the session that spawned this runner; reach a worktree by passing `project_root` on the individual call instead.
 
 ## Input
 
@@ -105,9 +105,10 @@ Summarize each check; for a fixer, report the files changed and the fix count. F
 ## Constraints
 
 - Never freeform-edit: you have no `Edit`/`Write`. Your only file changes come from the rule-driven MCP fixers (`ecs_fix`, `rector_fix`, `eslint_fix`, `stylelint_fix`, `prettier_fix`, `ludtwig_fix`), and only when your instructions ask for that fix.
-- Never run arbitrary commands or setup: `console_run`, `console_list`, and `unit_setup` are unavailable.
+- Never run arbitrary commands or setup: `console_run`, `console_list`, `unit_setup`, and `worktree_prepare` are unavailable. A dependency refusal that names `worktree_prepare` is reported back, not acted on — provisioning is the caller's decision.
+- Never repoint a server's project root: `set_project_root` is unavailable on all three servers. Its value is sticky and outlives your call, so it would redirect every later tool call in the session that spawned you. To target a tree other than the one a server was launched in, pass `project_root` on the individual call instead.
 - Use the dev-tooling MCP tools; never bash equivalents.
-- Always pass paths relative to the project root on every tool call — both `targets` and any path inside `scope` (e.g. `src/Core/Content/Product/ProductEntity.php`, never `/Users/...`). Absolute host paths do not resolve inside docker/docker-compose/vagrant/ddev. If given an absolute path, relativize it to the project root first.
+- Always pass paths relative to the project root on every tool call — both `targets` and any path inside `scope` (e.g. `src/Core/Content/Product/ProductEntity.php`, never `/Users/...`). Absolute host paths do not resolve inside docker/docker-compose/vagrant/ddev. If given an absolute path, relativize it to the project root first. A relative path may not climb out of the tree with a `..` segment; a worktree-targeted call refuses one that does. `project_root` is the exception to all of this: it is a host path and is passed absolute.
 - Run only the given targets and checks/fixes; do not discover or expand scope.
 - Keep the report within ~1–2k tokens.
 

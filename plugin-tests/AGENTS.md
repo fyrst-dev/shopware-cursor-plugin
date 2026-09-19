@@ -39,6 +39,13 @@ assert_hook_blocks "script.sh" "command to test" "expected suggestion"
 # Create temporary config file (dev-tooling)
 setup_config "php-tooling" '{"environment": "native"}'
 # Creates: $BATS_TEST_TMPDIR/.mcp-php-tooling.json
+
+# Rewrite both gitdir pointers of a linked worktree to relative form
+worktree_gitdir_relative "$worktree_root"
+
+# Refuse a real container CLI; stub_worktree_probe pass|fail drives the existence probe
+container_cli_refuse_real
+stub_worktree_probe pass
 ```
 
 ### Path Calculation

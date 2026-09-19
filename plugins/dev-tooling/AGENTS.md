@@ -28,13 +28,16 @@ plugins/dev-tooling/
 │       ├── check-js-admin-tools.sh     # Blocks Administration npm/npx commands (ESLint, Stylelint, Prettier, Jest, TSC, Vite)
 │       ├── check-js-storefront-tools.sh # Blocks Storefront npm/npx/composer commands (ESLint, Stylelint, Jest, Vitest, ludtwig, Webpack)
 │       ├── check-phpstan-baseline.sh   # postToolUse hook: warns when analyzed paths appear in phpstan-baseline.neon
+│       ├── worktree-directives.sh      # beforeShellExecution hook on git worktree add/remove: set_project_root reminder; on enter also the repair command for an absolute gitdir pointer when the path already exists
 │       └── lib/
 │           └── common.sh               # Shared: parse_hook_input(), load_mcp_config(), block_tool()
 │
 ├── shared/                             # SHARED FRAMEWORK (language-agnostic)
 │   ├── mcpserver_core.sh              # JSON-RPC 2.0 protocol handler + validate_tool_arguments()
 │   ├── config.sh                      # Config discovery & merging (parameterized via CONFIG_PREFIX)
-│   ├── environment.sh                 # Environment detection, PHP & JS command wrapping, argument quoting, path guards, noise filtering
+│   ├── environment.sh                 # Environment detection, PHP & JS command wrapping, argument quoting, path guards, environment-side path mapping, noise filtering
+│   ├── worktree.sh                    # Per-call root resolution and worktree validation: worktree_enter(), set_project_root, cwd (dev-tooling-owned, not templated)
+│   ├── server_run.sh                  # Shared server tail: run_mcp_server() call and why it is not isolated in a subshell (dev-tooling-owned, not templated)
 │   ├── scope.sh                       # Scope resolution: resolve_scope(), scope_get_tool_field()
 │   ├── docker-compose.sh              # Docker Compose environment: call-time resolution of container/workdir
 │   └── mcp-js-tooling.schema.json     # JSON Schema for .mcp-js-tooling.json (shared by JS servers)
@@ -50,7 +53,8 @@ plugins/dev-tooling/
 │       ├── phpunit.sh                 # tool_phpunit_run()
 │       ├── phpunit_coverage.sh        # tool_phpunit_coverage_gaps()
 │       ├── rector.sh                  # tool_rector_check(), tool_rector_fix()
-│       └── console.sh                 # tool_console_run(), tool_console_list()
+│       ├── console.sh                 # tool_console_run(), tool_console_list()
+│       └── prepare.sh                 # tool_worktree_prepare() — composer install for a fresh worktree
 │
 ├── mcp-server-js-admin/                   # ADMIN JS TOOLS MCP SERVER
 │   ├── server.sh                      # Entry point - sets CONFIG_PREFIX="js-tooling" (shared)
@@ -63,7 +67,8 @@ plugins/dev-tooling/
 │       ├── jest.sh                    # tool_jest_run()
 │       ├── tsc.sh                     # tool_tsc_check()
 │       ├── lint-all.sh                # tool_lint_all(), tool_lint_twig(), tool_unit_setup()
-│       └── build.sh                   # tool_vite_build()
+│       ├── build.sh                   # tool_vite_build()
+│       └── prepare.sh                 # tool_worktree_prepare() — npm ci for a fresh worktree
 │
 └── mcp-server-js-storefront/              # STOREFRONT JS TOOLS MCP SERVER
     ├── server.sh                      # Entry point - sets CONFIG_PREFIX="js-tooling" (shared)
@@ -75,7 +80,8 @@ plugins/dev-tooling/
         ├── jest.sh                    # tool_jest_run() — app/storefront package suite only
         ├── vitest.sh                  # tool_vitest_run() — views/components component suite
         ├── ludtwig.sh                 # tool_ludtwig_check(), tool_ludtwig_fix()
-        └── build.sh                   # tool_webpack_build()
+        ├── build.sh                   # tool_webpack_build()
+        └── prepare.sh                 # tool_worktree_prepare() — npm ci for a fresh worktree
 ```
 
 ## 🧱 Component Overview
@@ -84,7 +90,7 @@ This plugin provides:
 - **Three MCP Servers** via `mcp.json`:
   - `php-tooling` - PHP linting/testing tools
   - `js-admin-tooling` - Administration JavaScript tools (Vue 3/Vite)
-  - `js-storefront-tooling` - Storefront JavaScript tools (vanilla JS/Webpack): `eslint_check`, `eslint_fix`, `stylelint_check`, `stylelint_fix`, `jest_run`, `vitest_run`, `ludtwig_check`, `ludtwig_fix`, `webpack_build`
+  - `js-storefront-tooling` - Storefront JavaScript tools (vanilla JS/Webpack): `eslint_check`, `eslint_fix`, `stylelint_check`, `stylelint_fix`, `jest_run`, `vitest_run`, `ludtwig_check`, `ludtwig_fix`, `webpack_build`, `worktree_prepare`
 - **Subagent** via `agents/`:
   - `dev-tooling-runner` — executor for dev-tooling checks (and rule-driven fixes); run it to keep verbose output out of the conversation and get back a lean pass/fail report (runs on haiku); see [Agents](#agents)
 - **sessionStart Hook** via `hooks/hooks.json`:
@@ -97,10 +103,11 @@ This plugin provides:
   - PHP hook: blocks PHPStan, ECS, PHPUnit, Rector, bin/console
   - Admin JS hook: blocks ESLint, Stylelint, Prettier, Jest, TSC, lint_all/lint_twig, Vite commands
   - Storefront JS hook: blocks ESLint, Stylelint, Jest, Vitest, ludtwig, Webpack commands
+  - `worktree-directives.sh` fires on `git worktree add` / `git worktree remove` and reminds the session to call `set_project_root` on all three servers; on enter it additionally names the repair command when the worktree's `.git` file already carries an absolute gitdir pointer
 - **postToolUse Hook** via `hooks/hooks.json`:
   - `check-phpstan-baseline.sh` warns when a targeted `phpstan_analyze` run covers paths listed in `phpstan-baseline.neon` (or `.php`)
   - Ignores `enforce_mcp_tools` and always runs
-- The sessionStart and beforeShellExecution hook types are configurable via `enforce_mcp_tools: false` in config files
+- The sessionStart directive and the MCP-enforcement beforeShellExecution hooks are configurable via `enforce_mcp_tools: false` in config files; `worktree-directives.sh` and the postToolUse baseline check ignore the flag
 - **Shared Framework** in `shared/` - reusable across all servers
 
 ## 🤖 Agents
@@ -111,11 +118,11 @@ This plugin provides:
 
 **Scope ownership**: none. It acts only on the targets and checks it is given — no git diffing, file discovery, or blast-radius guessing — and never decides on its own to fix something it was told only to check. Deciding what to check (paths + any affected tests) and whether to apply a fix is the caller's job.
 
-**Bounded mutation, not freeform editing**: the rule-driven fixers (`ecs_fix`, `rector_fix`, `eslint_fix`, `stylelint_fix`, `prettier_fix`, `ludtwig_fix`) are available — the agent does not choose *what* changes, the linter ruleset does. It has no `Edit`/`Write`, so it cannot freeform-edit; its only file changes come from those deterministic fixers. Do not call `console_run`, `console_list`, or `unit_setup`. No `Bash`/`Glob`/`Grep` — scope discovery is the caller's job; `Read` is the only non-MCP tool, for quoting a flagged line.
+**Bounded mutation, not freeform editing**: the rule-driven fixers (`ecs_fix`, `rector_fix`, `eslint_fix`, `stylelint_fix`, `prettier_fix`, `ludtwig_fix`) are available — the agent does not choose *what* changes, the linter ruleset does. It has no `Edit`/`Write`, so it cannot freeform-edit; its only file changes come from those deterministic fixers. Do not call `console_run`, `console_list`, `unit_setup`, `worktree_prepare`, or `set_project_root`. `worktree_prepare` rewrites `vendor/`/`node_modules` — a setup mutation outside the fixer boundary, and one the dependency refusals would otherwise steer the agent into. `set_project_root` is sticky and would redirect every later tool call in the session that spawned it; the agent still reaches a worktree by passing `project_root` on the individual call. No `Bash`/`Glob`/`Grep` — scope discovery is the caller's job; `Read` is the only non-MCP tool, for quoting a flagged line.
 
-**Model**: Haiku | **Mutation boundary**: documented in the agent body — no `Edit`/`Write`, no `console_*` / `unit_setup`
+**Model**: Haiku | **Mutation boundary**: documented in the agent body — no `Edit`/`Write`, no `console_*` / `unit_setup` / `worktree_prepare` / `set_project_root`
 
-**Tools**: `Read` plus the short MCP tool names on `php-tooling`, `js-admin-tooling`, and `js-storefront-tooling` (never `console_run` / `console_list` / `unit_setup`)
+**Tools**: `Read` plus the short MCP tool names on `php-tooling`, `js-admin-tooling`, and `js-storefront-tooling` (never `console_run` / `console_list` / `unit_setup` / `worktree_prepare` / `set_project_root`)
 
 ## 🏗️ Architecture
 
@@ -199,7 +206,7 @@ Both handle environment-specific execution (native/docker/docker-compose/vagrant
 | Add Admin JS tool | `mcp-server-js-admin/lib/<tool>.sh` | `mcp-server-js-admin/tools.json` | `tool_*()`, `exec_npm_command()` |
 | Add Storefront JS tool | `mcp-server-js-storefront/lib/<tool>.sh` | `mcp-server-js-storefront/tools.json` | `tool_*()`, `exec_npm_command()` |
 | Edit sessionStart prompt | `hooks/prompts/mcp-tool-directives.md` | `hooks/scripts/session-start.sh` | Plain markdown, read by script |
-| Edit dev-tooling runner agent | `agents/dev-tooling-runner.md` | - | Tool policy in the body (no Edit/Write, no console_*/unit_setup), check/fix-kind→tool table, report template |
+| Edit dev-tooling runner agent | `agents/dev-tooling-runner.md` | - | Tool policy in the body (no Edit/Write, no console_*/unit_setup/worktree_prepare/set_project_root), check/fix-kind→tool table, report template |
 | Add blocked PHP command | `hooks/scripts/check-php-tools.sh` | - | `block_tool()`, grep pattern |
 | Add blocked Admin JS command | `hooks/scripts/check-js-admin-tools.sh` | - | `block_tool()`, `is_admin_context()` |
 | Add blocked Storefront JS command | `hooks/scripts/check-js-storefront-tools.sh` | - | `block_tool()`, `is_storefront_context()` |
@@ -283,10 +290,17 @@ This plugin's own suites are in `plugin-tests/dev-tooling/`:
 | `mcp_tool_phpstan.bats`          | PHPStan tool command construction                                                   |
 | `mcp_tool_phpunit.bats`          | PHPUnit tool command construction (coverage, config, drivers)                       |
 | `mcp_tool_phpunit_coverage.bats` | PHPUnit coverage gap parsing (clover XML, filtering, ranges)                        |
+| `tool_schema.bats`               | Every server's `tools.json` refuses an undeclared parameter                          |
 | `scope_resolution.bats`          | `resolve_scope()` and scope field lookup                                            |
 | `scope_php_tools.bats`           | Scope handling in the PHP MCP tools                                                 |
 | `scope_js_tools.bats`            | Scope handling in the JS MCP tools                                                  |
 | `scope_session_start.bats`       | Scope surfacing in the sessionStart output                                          |
+| `worktree_resolution.bats`       | Worktree resolution, identity, linkage, charset, probe, config, deps, path guard   |
+| `worktree_state.bats`            | State file: sticky read-back, reset, a removed root, probe cache, atomic writes    |
+| `worktree_hook.bats`             | `worktree-directives.sh`: the Cursor `additional_context` envelope, enter/exit directive text, `git worktree` command payloads, the `.cwd` fallback, the no-path diagnostic, exit 0 on malformed input |
+| `worktree_php_tools.bats`        | `phpunit_coverage_gaps`: clover paths relative to the mapped workdir, refused read |
+| `worktree_js_tools.bats`         | `project_root` reaching the JS package directory, which the conformance scan does not capture |
+| `worktree_conformance.bats`      | Every enumerated `tool_*` function runs in the named worktree and runs nothing against a refused one, with the enumeration reconciled against `tools.json` |
 
 The modules this plugin consumes from `templates/mcp-shared/` are covered once, for every consuming plugin, in `plugin-tests/mcp-shared/`:
 

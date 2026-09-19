@@ -16,6 +16,8 @@
 #   - ludtwig_check: Run ludtwig on Storefront Twig templates
 #   - ludtwig_fix: Auto-fix ludtwig violations
 #   - webpack_build: Build with Webpack
+#   - set_project_root: Set or clear the sticky project root
+#   - cwd: Report the project root, working directory and config in use
 #
 # Supports environments: native, docker, docker-compose, vagrant, ddev
 #
@@ -63,12 +65,22 @@ source "${SHARED_DIR}/scope.sh"
 if ! scope_validate; then
     exit 1
 fi
+source "${SHARED_DIR}/worktree.sh"
+if ! worktree_state_init; then
+    exit 1
+fi
+
+# One EXIT trap doing both jobs. A second `trap ... EXIT` would replace the one
+# config.sh installs at source time, leaving the merged-config temp file behind.
+trap 'worktree_state_cleanup; config_cleanup' EXIT
+
 source "${SCRIPT_DIR}/lib/eslint.sh"
 source "${SCRIPT_DIR}/lib/stylelint.sh"
 source "${SCRIPT_DIR}/lib/jest.sh"
 source "${SCRIPT_DIR}/lib/vitest.sh"
 source "${SCRIPT_DIR}/lib/ludtwig.sh"
 source "${SCRIPT_DIR}/lib/build.sh"
+source "${SCRIPT_DIR}/lib/prepare.sh"
 
 trap 'log "ERROR" "Unexpected error on line ${LINENO}"' ERR
 
@@ -85,4 +97,4 @@ log "INFO" "Working dir: ${LINT_WORKDIR}"
 log "INFO" "Extra log: ${MCP_EXTRA_LOG_FILE:-<none>}"
 log "INFO" "======================================"
 
-run_mcp_server "$@"
+source "${SHARED_DIR}/server_run.sh"

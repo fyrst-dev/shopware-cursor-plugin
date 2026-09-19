@@ -44,4 +44,4 @@ The script invocation in the workflow step above is authoritative. Adding or rem
 
 ## Not templated
 
-`plugins/dev-tooling/shared/scope.sh` is owned by dev-tooling. Don't add it to the mapping.
+`plugins/dev-tooling/shared/scope.sh`, `plugins/dev-tooling/shared/worktree.sh`, and `plugins/dev-tooling/shared/server_run.sh` are owned by dev-tooling. Don't add them to the mapping.
