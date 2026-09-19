@@ -43,9 +43,26 @@ _console_resolve_output_file() {
         -*) value="./${value}" ;;
     esac
 
+    # Against the effective project root rather than $PWD. A launch-root call
+    # returns from worktree_resolve_root without changing directory, so $PWD is
+    # still the directory the server process was started in, which need not be
+    # the project root at all — the same divergence the native wrapper stopped
+    # relying on. CHANGELOG 3.19.0 states the project root as this parameter's
+    # contract, and worktree_enter has already run by the time this is called.
     local resolved="${value}"
     if [[ "${resolved}" != /* ]]; then
-        resolved="${PWD}/${resolved}"
+        resolved="${WORKTREE_EFFECTIVE_ROOT}/${resolved}"
+    fi
+
+    # A linked git worktree's ".git" is a REGULAR FILE holding the worktree's
+    # identity, so it passes the regular-file test below and the atomic write
+    # would replace it. Every later project_root validation of that tree then
+    # fails, because the identity the checks read is gone. Refused whether or
+    # not it exists: creating one where none exists leaves a directory that
+    # looks like a broken worktree.
+    if [[ "${resolved##*/}" == ".git" ]]; then
+        printf '%s\n' "Refusing to run: \"output_file\" \"${resolved}\" targets a \".git\" entry. In a linked git worktree that file holds the worktree's identity, and overwriting it breaks the worktree."
+        return 1
     fi
 
     if [[ -L "${resolved}" ]]; then
@@ -89,6 +106,24 @@ _console_run_to_file() {
         return 1
     }
 
+    # wrap_command's native branch carries no working directory: the directory
+    # is handed to cd as a quoted argument instead of being written into the
+    # command string, which is what lets a project root holding a space or a
+    # metacharacter work at all. exec_command enters it for every other tool;
+    # this path evals the wrapped command itself, so it has to do the same, with
+    # the same expression exec_command uses.
+    local workdir="${LINT_WORKDIR}${SCOPE_CWD:+/${SCOPE_CWD}}"
+
+    # Probed here, before any temp file exists, so an unusable working directory
+    # answers as this function's own refusal rather than as a failed command.
+    # The command substitution confines the probe's own cd to a subshell that
+    # ends with it, which is why the run below has to enter the directory again.
+    local enter_error
+    if ! enter_error=$(_enter_command_workdir "${workdir}"); then
+        printf '%s\n' "${enter_error}"
+        return 1
+    fi
+
     log "INFO" "Executing: ${wrapped}"
 
     local tmp
@@ -110,8 +145,12 @@ _console_run_to_file() {
     # it forever instead of seeing EOF.
     # The eval runs in a subshell so that an `exit` reached inside the wrapped
     # command ends that subshell rather than the server; exec_command gets the
-    # same containment from the command substitution it assigns through.
-    ( eval "${wrapped}" ) </dev/null >"${tmp}" 2>"${err_file}" || exit_code=$?
+    # same containment from the command substitution it assigns through. The
+    # working-directory change is confined to that same subshell. Its stdout is
+    # the target file here, so the helper's message is discarded — the probe
+    # above already reported it — and the `&&` is what keeps a failed cd from
+    # falling through to running the command in the wrong tree.
+    ( _enter_command_workdir "${workdir}" >/dev/null && eval "${wrapped}" ) </dev/null >"${tmp}" 2>"${err_file}" || exit_code=$?
 
     local stderr_text
     stderr_text=$(_filter_env_noise < "${err_file}")
@@ -166,6 +205,11 @@ _console_run_to_file() {
 tool_console_run() {
     local args="$1"
 
+    # The banner is safe ahead of the "output_file" route: _console_run_to_file
+    # redirects the wrapped command's own stdout into the target file, so
+    # nothing written to this function's stdout can reach it.
+    worktree_enter "${args}" || return 1
+
     _refuse_linebreak_args "${args}" || return 1
 
     local scope_arg
@@ -174,6 +218,8 @@ tool_console_run() {
         echo "Scope resolution error"
         return 1
     fi
+
+    worktree_assert_dependencies || return 1
 
     local default_env default_verbosity default_no_debug default_no_interaction
     default_env=$(_get_config_value ".console.env")
@@ -367,6 +413,10 @@ _format_console_list_llm() {
 tool_console_list() {
     local args="$1"
 
+    # The banner is safe ahead of the "llm" route: that route parses raw_output,
+    # captured from exec_command, and never reads this function's stdout.
+    worktree_enter "${args}" || return 1
+
     _refuse_linebreak_args "${args}" || return 1
 
     local scope_arg
@@ -375,6 +425,8 @@ tool_console_list() {
         echo "Scope resolution error"
         return 1
     fi
+
+    worktree_assert_dependencies || return 1
 
     local parsed
     if ! parsed=$(echo "${args}" | jq -c '{

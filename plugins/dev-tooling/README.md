@@ -11,6 +11,7 @@ PHP and JavaScript tooling for Shopware 6 exposed through three MCP servers. Wra
 - `phpunit_coverage_gaps`: uncovered line and method discovery from a Clover report
 - `console_run`, `console_list`: Symfony Console
 - `rector_fix`, `rector_check`: Rector refactoring
+- `worktree_prepare`: `composer install` for a fresh worktree
 
 ### Administration Tools (`js-admin-tooling`)
 - `eslint_check`, `eslint_fix`: ESLint
@@ -22,6 +23,7 @@ PHP and JavaScript tooling for Shopware 6 exposed through three MCP servers. Wra
 - `jest_run`: Jest unit tests
 - `unit_setup`: regenerate the component import resolver map
 - `vite_build`: Vite build
+- `worktree_prepare`: `npm ci` for a fresh worktree
 
 ### Storefront Tools (`js-storefront-tooling`)
 - `eslint_check`, `eslint_fix`: ESLint
@@ -30,6 +32,7 @@ PHP and JavaScript tooling for Shopware 6 exposed through three MCP servers. Wra
 - `vitest_run`: Vitest tests for the component suite under `views/components/`
 - `ludtwig_check`, `ludtwig_fix`: ludtwig linting for Twig templates
 - `webpack_build`: Webpack build
+- `worktree_prepare`: `npm ci` for a fresh worktree
 
 > [!NOTE]
 > Storefront tests are split across two runners. Jest's `rootDir` is the `app/storefront` package, so it never collects the component tests under `src/Storefront/Resources/views/components/` — those run through `vitest_run`, and `jest_run` rejects a `testPathPatterns` value naming that tree.
@@ -69,13 +72,30 @@ Open **Customize → MCP** and confirm `php-tooling`, `js-admin-tooling`, and `j
 
 ## 🗜️ Tools Reference
 
-30 tools across three MCP servers. The [full reference](./docs/reference.md) has parameter tables and examples for every tool; the list below is the quick scan.
+The [full reference](./docs/reference.md) has parameter tables and examples for every tool; the table below is the quick scan, by server.
 
-| Server                  | Tools                                                                                                                                                                              |
-|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `php-tooling`           | `phpstan_analyze`, `ecs_check`, `ecs_fix`, `phpunit_run`, `phpunit_coverage_gaps`, `console_run`, `console_list`, `rector_fix`, `rector_check`                                      |
-| `js-admin-tooling`      | `eslint_check`, `eslint_fix`, `stylelint_check`, `stylelint_fix`, `prettier_check`, `prettier_fix`, `jest_run`, `tsc_check`, `lint_all`, `lint_twig`, `unit_setup`, `vite_build`    |
-| `js-storefront-tooling` | `eslint_check`, `eslint_fix`, `stylelint_check`, `stylelint_fix`, `jest_run`, `vitest_run`, `ludtwig_check`, `ludtwig_fix`, `webpack_build`                                         |
+| Server                  | Tools                                                                                                                                                                                                                           |
+|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `php-tooling`           | `phpstan_analyze`, `ecs_check`, `ecs_fix`, `phpunit_run`, `phpunit_coverage_gaps`, `console_run`, `console_list`, `rector_fix`, `rector_check`, `worktree_prepare`, `set_project_root`, `cwd`                                   |
+| `js-admin-tooling`      | `eslint_check`, `eslint_fix`, `stylelint_check`, `stylelint_fix`, `prettier_check`, `prettier_fix`, `jest_run`, `tsc_check`, `lint_all`, `lint_twig`, `unit_setup`, `vite_build`, `worktree_prepare`, `set_project_root`, `cwd` |
+| `js-storefront-tooling` | `eslint_check`, `eslint_fix`, `stylelint_check`, `stylelint_fix`, `jest_run`, `vitest_run`, `ludtwig_check`, `ludtwig_fix`, `webpack_build`, `worktree_prepare`, `set_project_root`, `cwd`                                      |
+
+## 🌳 Worktree Support
+
+Every tool except `cwd`, on all three servers, takes an optional `project_root` to run one call against a linked git worktree of the root the server was launched in. `set_project_root` and `cwd` manage that state rather than targeting one call with it — `set_project_root` takes a `project_root` and sticks it for every later call on that server process (each server is a separate process holding its own sticky value), and omitting the argument clears it; `cwd` takes no parameters and reports what a server currently resolves to.
+
+> [!NOTE]
+> Worktree targeting works in every environment. Under `docker`, `docker-compose`, `vagrant`, and `ddev` the worktree has to sit inside the launch project root — that root is the only tree the container or VM mounts — so a worktree created elsewhere on the host is refused. An in-root worktree is reached at its own position below the environment's working directory: `docker.workdir`, `vagrant.workdir`, or `ddev.workdir`, and for `docker-compose` a configured `docker-compose.workdir`, or else the destination of the longest matching bind mount.
+
+> [!IMPORTANT]
+> A worktree's `.git` file has to carry a relative `gitdir` pointer. `git worktree add` writes an absolute one unless the repository sets `worktree.useRelativePaths`, and an absolute pointer names a host path that does not exist inside a container — so it is refused in every environment, `native` included. Relink an existing worktree with `git -c worktree.useRelativePaths=true worktree repair <worktree-path>` (needs git 2.48 or newer), or create one with `git worktree add --relative-paths`. Setting `git config worktree.useRelativePaths true` once in the repository makes every later worktree carry relative linkage from the start.
+
+A fresh worktree holds tracked files only, so the launch tree's `vendor/` and `node_modules` are not in it and every composer- or npm-backed tool refuses until they exist. Each server's `worktree_prepare` installs its own toolchain's dependencies in the target root — `composer install` on `php-tooling`, `npm ci` in the package directory on the JS servers — through the configured environment, which under a container runs the install inside the container at the mapped path. Re-run it after the worktree's `composer.json`/`composer.lock` or `package-lock.json` changes; the dependency check only tests that the install directory exists.
+
+> [!WARNING]
+> Do not symlink `vendor/` from the launch tree into a worktree. Composer's generated autoloaders derive their base directory from `__DIR__`, which resolves through the symlink, so the worktree would silently autoload the launch tree's classes — tests would then exercise the wrong code.
+
+See [docs/reference.md](./docs/reference.md#-worktree-support) for the full parameter reference, and [docs/configuration.md](./docs/configuration.md) for how a worktree's own configuration is selected.
 
 ## 🤖 Agents
 
@@ -88,7 +108,7 @@ You decide what to check, whether to apply a fix, and which targets to give it. 
 The sessionStart guidance steers the agent to delegate larger dev-tool runs to this agent. It is a soft default — a quick single-file check can still call the MCP tool inline.
 
 > [!NOTE]
-> The runner never freeform-edits and never decides scope on its own. It has no `Edit`/`Write`, so its only file changes come from the deterministic rule-driven fixers (`ecs_fix`, `rector_fix`, `eslint_fix`, `stylelint_fix`, `prettier_fix`, `ludtwig_fix`) — and only when your request asks for that fix. Do not call `console_run`, `console_list`, or `unit_setup`.
+> The runner never freeform-edits and never decides scope on its own. It has no `Edit`/`Write`, so its only file changes come from the deterministic rule-driven fixers (`ecs_fix`, `rector_fix`, `eslint_fix`, `stylelint_fix`, `prettier_fix`, `ludtwig_fix`) — and only when your request asks for that fix. Do not call `console_run`, `console_list`, `unit_setup`, `worktree_prepare`, or `set_project_root`. `set_project_root` is sticky and would redirect every later dev-tooling call in the session; `worktree_prepare` rewrites `vendor/`/`node_modules`, a setup mutation a check-only dispatch never authorized.
 
 ## 🧭 Scopes
 

@@ -8,6 +8,17 @@
 tool_webpack_build() {
     local args="$1"
 
+    worktree_enter "${args}" || return 1
+
+    local scope_arg
+    scope_arg=$(echo "${args}" | jq -r '.scope // empty' 2>/dev/null || echo "")
+    if ! resolve_scope "${scope_arg}"; then
+        echo "Scope resolution error"
+        return 1
+    fi
+
+    worktree_assert_dependencies || return 1
+
     local mode
     mode=$(echo "${args}" | jq -r '.mode // "production"')
 
