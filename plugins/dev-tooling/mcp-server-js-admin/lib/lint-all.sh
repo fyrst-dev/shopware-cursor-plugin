@@ -4,6 +4,19 @@
 
 # tool_lint_all - runs TypeScript, ESLint, Stylelint, and Prettier via npm run lint:all.
 tool_lint_all() {
+    local args="${1:-}"
+
+    worktree_enter "${args}" || return 1
+
+    local scope_arg
+    scope_arg=$(echo "${args}" | jq -r '.scope // empty' 2>/dev/null || echo "")
+    if ! resolve_scope "${scope_arg}"; then
+        echo "Scope resolution error"
+        return 1
+    fi
+
+    worktree_assert_dependencies || return 1
+
     local cmd="npm run lint:all"
 
     log "INFO" "Running all lint checks (admin): ${cmd}"
@@ -13,6 +26,19 @@ tool_lint_all() {
 
 # tool_lint_twig - ESLint check for Admin Vue Twig templates (.html.twig files) via npm run lint:twig.
 tool_lint_twig() {
+    local args="${1:-}"
+
+    worktree_enter "${args}" || return 1
+
+    local scope_arg
+    scope_arg=$(echo "${args}" | jq -r '.scope // empty' 2>/dev/null || echo "")
+    if ! resolve_scope "${scope_arg}"; then
+        echo "Scope resolution error"
+        return 1
+    fi
+
+    worktree_assert_dependencies || return 1
+
     local cmd="npm run lint:twig"
 
     log "INFO" "Running Twig template linting (admin): ${cmd}"
@@ -23,6 +49,19 @@ tool_lint_twig() {
 # Regenerate component import resolver map for Jest
 # Run this when tests fail with import/module resolution errors
 tool_unit_setup() {
+    local args="${1:-}"
+
+    worktree_enter "${args}" || return 1
+
+    local scope_arg
+    scope_arg=$(echo "${args}" | jq -r '.scope // empty' 2>/dev/null || echo "")
+    if ! resolve_scope "${scope_arg}"; then
+        echo "Scope resolution error"
+        return 1
+    fi
+
+    worktree_assert_dependencies || return 1
+
     local cmd="npm run unit-setup"
 
     log "INFO" "Running unit test setup (admin): ${cmd}"

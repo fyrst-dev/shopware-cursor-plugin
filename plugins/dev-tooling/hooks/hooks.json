@@ -19,6 +19,10 @@
       {
         "command": "./hooks/scripts/check-js-storefront-tools.sh",
         "timeout": 5
+      },
+      {
+        "command": "./hooks/scripts/worktree-directives.sh",
+        "timeout": 5
       }
     ],
     "postToolUse": [
@@ -26,6 +30,10 @@
         "command": "./hooks/scripts/check-phpstan-baseline.sh",
         "timeout": 5,
         "matcher": "phpstan_analyze"
+      },
+      {
+        "command": "./hooks/scripts/worktree-directives.sh",
+        "timeout": 5
       }
     ]
   }

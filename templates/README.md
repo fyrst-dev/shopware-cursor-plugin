@@ -37,4 +37,6 @@ Source of truth for shared code copied into plugins. Plugin copies must be byte-
 These files live in `plugins/dev-tooling/shared/` but are owned by dev-tooling, not templates:
 
 - `scope.sh` — full scope resolution system (dev-tooling only)
+- `worktree.sh` — per-call project root resolution for a linked git worktree (dev-tooling only)
+- `server_run.sh` — shared `run_mcp_server` tail for the three server entry points (dev-tooling only)
 - `mcp-js-tooling.schema.json` — JS config schema (dev-tooling only)

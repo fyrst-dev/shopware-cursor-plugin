@@ -1,6 +1,6 @@
 ---
 name: phpunit-migration-test-reviewing
-version: 6.0.0
+version: 6.0.1
 description: Internal sub-skill. Do not auto-activate. Use only when explicitly invoked by name by another skill or agent.
 user-invocable: false
 ---

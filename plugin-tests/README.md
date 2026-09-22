@@ -74,6 +74,14 @@ plugin-tests/
 │   ├── scope_resolution.bats          # Scope declaration, validation and refusal
 │   ├── scope_session_start.bats       # Scope reporting from the session-start hook
 │   ├── session_start.bats             # Session-start hook JSON output
+│   ├── cursor_hooks.bats              # Cursor beforeShellExecution payload shape
+│   ├── tool_schema.bats               # Undeclared-parameter refusal across all three servers
+│   ├── worktree_resolution.bats       # Worktree resolution, identity, linkage, charset, probe
+│   ├── worktree_state.bats            # Sticky project-root state file
+│   ├── worktree_hook.bats             # worktree-directives.sh Cursor envelope and git worktree payloads
+│   ├── worktree_php_tools.bats        # phpunit_coverage_gaps against a mapped worktree
+│   ├── worktree_js_tools.bats         # project_root reaching the JS package directory
+│   ├── worktree_conformance.bats      # Every tool_* runs in the named worktree
 │   ├── fixtures/
 │   │   └── coverage/                  # XML fixtures for coverage gap tests
 │   │       ├── two_files.xml          # Two files with partial coverage

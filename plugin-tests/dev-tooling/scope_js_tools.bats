@@ -24,6 +24,8 @@ _fake_admin_script_body() {
             printf '%s\n' '"npm run lint:scss -- --fix"' ;;
         jest:base)
             printf '%s\n' '"jest --config jest.config.js"' ;;
+        build)
+            printf '%s\n' '"vite build"' ;;
         *)
             printf '%s\n' '{}' ;;
     esac
@@ -52,6 +54,11 @@ JSON
     CALLS_FILE="${BATS_TEST_TMPDIR}/calls.log"
     source "${PLUGIN_DIR}/shared/environment.sh"
     source "${PLUGIN_DIR}/shared/scope.sh"
+    PROJECT_ROOT="${BATS_TEST_TMPDIR}"
+    export PROJECT_ROOT
+    # shellcheck source=/dev/null
+    source "${PLUGIN_DIR}/shared/worktree.sh"
+    worktree_state_init
     # Set LINT_ENV/LINT_WORKDIR AFTER sourcing environment.sh so its module-level
     # initializers ("") don't clobber our test values.
     LINT_ENV="native"
@@ -72,10 +79,15 @@ JSON
     }
     source "${PLUGIN_DIR}/mcp-server-js-admin/lib/eslint.sh"
     source "${PLUGIN_DIR}/mcp-server-js-admin/lib/jest.sh"
+    source "${PLUGIN_DIR}/mcp-server-js-admin/lib/lint-all.sh"
+    source "${PLUGIN_DIR}/mcp-server-js-admin/lib/build.sh"
+    source "${PLUGIN_DIR}/mcp-server-js-storefront/lib/build.sh"
 }
 
 teardown() {
-    unset LINT_ENV LINT_WORKDIR LINT_CONFIG_FILE JS_CONTEXT SCOPE_CWD SCOPE_NAME SCOPE_JS_SUBDIR CALLS_FILE
+    worktree_state_cleanup
+    unset LINT_ENV LINT_WORKDIR LINT_CONFIG_FILE JS_CONTEXT SCOPE_CWD SCOPE_NAME SCOPE_JS_SUBDIR CALLS_FILE \
+        PROJECT_ROOT DEV_TOOLING_STATE_FILE
 }
 
 @test "eslint scoped: runs under scope cwd" {
@@ -158,6 +170,19 @@ _set_jest_env() {
     refute_line --partial "npm ci"
 }
 
+@test "jest scoped: install_if_missing measures the host path under a container environment" {
+    # The [[ -d ]] runs on the host, and LINT_WORKDIR is environment-side under
+    # a container — composed from it, the test was always false and every
+    # scoped run paid a full `npm ci` although node_modules existed.
+    LINT_ENV="docker"
+    LINT_WORKDIR="/srv/app"
+    mkdir -p "${BATS_TEST_TMPDIR}/custom/plugins/X/tests/jest/administration/node_modules"
+    run tool_jest_run '{"scope":"plugin-x"}'
+    assert_success
+    run cat "${CALLS_FILE}"
+    refute_line --partial "npm ci"
+}
+
 @test "jest unscoped: no ADMIN_PATH env export in command" {
     run tool_jest_run '{}'
     assert_success
@@ -177,4 +202,39 @@ _set_jest_env() {
     assert_success
     assert_output --partial "npm run jest:base"
     refute_output --partial "npm run unit"
+}
+
+@test "lint_all scoped: runs under scope cwd" {
+    run tool_lint_all '{"scope":"plugin-x"}'
+    assert_success
+    run cat "${CALLS_FILE}"
+    assert_line --partial "[scope=custom/plugins/X|sub=]"
+}
+
+@test "lint_twig scoped: runs under scope cwd" {
+    run tool_lint_twig '{"scope":"plugin-x"}'
+    assert_success
+    run cat "${CALLS_FILE}"
+    assert_line --partial "[scope=custom/plugins/X|sub=]"
+}
+
+@test "unit_setup scoped: runs under scope cwd" {
+    run tool_unit_setup '{"scope":"plugin-x"}'
+    assert_success
+    run cat "${CALLS_FILE}"
+    assert_line --partial "[scope=custom/plugins/X|sub=]"
+}
+
+@test "vite_build scoped: runs under scope cwd" {
+    run tool_vite_build '{"scope":"plugin-x"}'
+    assert_success
+    run cat "${CALLS_FILE}"
+    assert_line --partial "[scope=custom/plugins/X|sub=]"
+}
+
+@test "webpack_build scoped: runs under scope cwd" {
+    run tool_webpack_build '{"scope":"plugin-x"}'
+    assert_success
+    run cat "${CALLS_FILE}"
+    assert_line --partial "[scope=custom/plugins/X|sub=]"
 }
