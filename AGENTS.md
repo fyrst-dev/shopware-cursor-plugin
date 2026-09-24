@@ -54,6 +54,8 @@ plugins/
 - `owner` — Object with at least `name`
 - `plugins` — Array of `{ "name", "source" }` (`source` is a relative path starting with `./`)
 
+Omit `metadata.pluginRoot`. Each `source` is already a repo-relative path such as `./plugins/<name>`. Cursor prefixes `pluginRoot` onto every `source`, so setting both looks up `plugins/plugins/<name>` and the plugin fails to load.
+
 ### plugin.json Schema
 
 ```json
