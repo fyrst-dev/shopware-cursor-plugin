@@ -4,6 +4,7 @@
 #
 # Validates the Cursor-only marketplace:
 # - .cursor-plugin/marketplace.json exists and lists plugins
+# - metadata.pluginRoot is unset (sources are already repo-relative)
 # - each plugin has .cursor-plugin/plugin.json
 # - no Claude Code marketplace or plugin manifests remain
 # - MCP plugins ship mcp.json (default discovery) with CURSOR_PLUGIN_ROOT
@@ -50,6 +51,12 @@ require_file "$CURSOR_MARKETPLACE" "Cursor marketplace.json" || exit 2
 if ! jq -e '.name and .owner.name and .plugins' "$CURSOR_MARKETPLACE" >/dev/null; then
   log_error "Cursor marketplace.json is missing name, owner.name, or plugins"
   exit 1
+fi
+
+plugin_root=$(jq -r '.metadata.pluginRoot // empty' "$CURSOR_MARKETPLACE")
+if [ -n "$plugin_root" ]; then
+  log_error "marketplace.json must not set metadata.pluginRoot (${plugin_root}). Each source is already repo-relative (./plugins/<name>); Cursor prefixes pluginRoot onto every source and looks up plugins/plugins/<name>."
+  failed=$((failed + 1))
 fi
 
 while IFS= read -r plugin_name; do
