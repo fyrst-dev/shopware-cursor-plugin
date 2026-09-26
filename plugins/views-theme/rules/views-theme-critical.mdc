@@ -1,0 +1,14 @@
+---
+description: Critical ViewsTheme storefront conventions — no builds, surgical holistic edits, px/CVA, UX components, ShopwareComponent JS
+alwaysApply: true
+---
+
+# ViewsTheme critical rules
+
+Resolve docs first: live ViewsTheme `docs/` if present (`custom/static-plugins/ViewsTheme/docs`, `vendor/fyrst/views-theme/docs`, or a views-theme workspace), else this plugin's `references/docs/`. Run `scripts/resolve-docs.sh`. Open `conventions/hard-rules.md` and follow the linked topic pages. Do not invent conventions here.
+
+- Never run theme, storefront, JS, or CSS compile or watch. Humans rebuild.
+- Holistic refactors and surgical edits. No dual-path hacks. No full-file overwrite for a local fix.
+- Component CSS and token fallbacks use **px only**. CVA for Bootstrap utilities, prop variants, and `xl` breakpoints. CSS tokens only for tracks, areas, and px sizes with no utility.
+- New UI lives under `views/components/` as `<twig:ViewsTheme:…>` or the **child theme's** UX tag. Do not create new `views/storefront/` files.
+- Interactive JS: co-located `ShopwareComponent` plus `data-component`. No new `PluginManager` plugins, CSS-class selectors, or `data-ref`.

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "./scripts/deny-theme-builds.sh",
+        "timeout": 5
+      }
+    ]
+  }
+}

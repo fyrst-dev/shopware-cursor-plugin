@@ -1,0 +1,21 @@
+{
+  "name": "views-theme",
+  "version": "1.0.0",
+  "description": "ViewsTheme storefront conventions for Shopware 6.7: UX Twig components, CVA, co-located ShopwareComponent JavaScript, child-theme workflows, and a hook that denies theme/asset builds.",
+  "author": {
+    "name": "Fyrst Digital"
+  },
+  "license": "MIT",
+  "keywords": [
+    "shopware",
+    "views-theme",
+    "storefront",
+    "twig",
+    "ux-components",
+    "cva",
+    "child-theme",
+    "javascript"
+  ],
+  "homepage": "https://github.com/fyrst-dev/shopware-cursor-plugin/tree/main/plugins/views-theme",
+  "repository": "https://github.com/fyrst-dev/shopware-cursor-plugin"
+}

@@ -43,6 +43,7 @@ body:
         - shopware-documentation
         - shopware-env
         - test-writing
+        - views-theme
         - Other
     validations:
       required: true

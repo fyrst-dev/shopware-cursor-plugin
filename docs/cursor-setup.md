@@ -11,7 +11,7 @@ This repository is a **Cursor-only** plugin marketplace. There is no Claude Code
 1. Open the Cursor dashboard → **Plugins**.
 2. Under **Team Marketplaces**, choose **Add Marketplace** → **Import from Repo**.
 3. Point it at this repository (`fyrst-dev/shopware-cursor-plugin` or your fork) and track **`main`**.
-4. Confirm Cursor finds `.cursor-plugin/marketplace.json` and the ten plugin entries.
+4. Confirm Cursor finds `.cursor-plugin/marketplace.json` and the eleven plugin entries.
 5. Set marketplace access and, if you use the Cursor GitHub App, turn on **Auto Refresh**.
 
 Developers then install individual plugins from **Customize** in the sidebar.
@@ -67,11 +67,11 @@ Prefer `.cursor/` copies of those files when you want them off the project root.
 | `plugins/<name>/.cursor-plugin/plugin.json` | Plugin manifest |
 | `skills/*/SKILL.md` | Skills (short MCP tool names) |
 | `agents/*.md` | Custom agents (`name` + `description`; tool policy in the body) |
-| `commands/` | Commands — this marketplace currently has none |
+| `commands/` | Commands — `views-theme` ships `/vi-implement`, `/vi-new-component`, `/vi-review-conventions` |
 | `mcp.json` | MCP servers (`${CURSOR_PLUGIN_ROOT}`) |
 | `hooks/hooks.json` | Cursor hooks (`sessionStart`, `beforeShellExecution`, `postToolUse`) |
 
-`test-writing`'s `rules/` directory is the PHPUnit catalog served by MCP. The Cursor manifest sets `"rules": []` so those files are **not** loaded as always-on Cursor rules.
+`test-writing`'s `rules/` directory is the PHPUnit catalog served by MCP. The Cursor manifest sets `"rules": []` so those files are **not** loaded as always-on Cursor rules. `views-theme` ships always-apply `.mdc` rules under `rules/` on purpose.
 
 Hook scripts read Cursor payloads (`.command` or `.tool_input.command`, `CURSOR_PROJECT_DIR`, `workspace_roots`) and emit `{ "additional_context": "..." }`. Shell enforcement denies with `{ "permission": "deny", ... }` and exit 2.
 

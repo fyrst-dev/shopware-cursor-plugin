@@ -1,0 +1,179 @@
+# Navigation drawer
+
+Lazy-loaded side drawer for the main category navigation, opened from the header menu action.
+
+All UI lives under UX components (`components/Drawer/*`, `components/Navigation/Drawer/*`). Markup is served by theme routes under `/vi/…` — not core `/widgets/menu/offcanvas`.
+
+Desktop top-level nav is theme-owned via [Navigation bar](navigation-bar.md) (`Page:Header:Main`). This feature owns the header **menu** action and mobile-style drill-down navigation. Core navbar and offcanvas seed markup are suppressed in `storefront/layout/header.html.twig`.
+
+## Ownership
+
+| Piece | Responsibility |
+|-------|----------------|
+| `Navigation:Drawer:Action` | Lazy fetch/mount; toggle open/close. Public `open()` / `close()` (`callMethod`). Composes `ViewsTheme:Button` (`color="none"`, `icon="list"`) |
+| `Navigation:Drawer` | Thin composition — **no** JS. Overrides Drawer `panel` + Panel `header` (`Navigation:Drawer:Header`) and `footer` (`Navigation:Drawer:Footer`); Menu is Panel body |
+| `Navigation:Drawer:Header` | Root-host wrapper of `Drawer:Header` (no extra node, no JS). Title hosts `Wishlist:Action` + `Account:Action`; root class `vi-navigation-drawer-header` |
+| `Navigation:Drawer:Footer` | Presentational chrome (no JS). Hosts `Language:Action` + `Currency:Action` when either collection has more than one item; root class `vi-navigation-drawer-footer` |
+| `Drawer` | Shell: open/close a11y, motion; default empty `panel` (Panel with `title` prop); no body content slot |
+| `Drawer:Panel` | Sliding surface + header/body; owns `{% block content %}`; body is flex column (`min-h-0 overflow-hidden`) so nested scrollports can fill; composes `Header` via `title` prop (overridable); JS notifies Drawer on close `transitionend` |
+| `Drawer:Header` | Presentational chrome: title slot + `Drawer:Close` (no JS) |
+| `Backdrop` / `Drawer:Close` | `callMethod(Drawer, close)` (`Backdrop` via `componentName`) |
+| `Navigation:Drawer:Menu` | Drill-down fetch, cache, level slide; composes `Scroll:Area` as scrollport |
+| `Navigation:Drawer:Menu:Header` | Non-root level chrome: Back + ShowAll + Active (presentational) |
+| `Navigation:Drawer:Item` | Category row: label link → category; caret `Drill` → submenu (caret only if children) |
+| `Navigation:Drawer:Drill` | Emits menu drill event with `{ url, source, direction }` |
+
+## Features
+
+- Header `Navigation:Drawer:Action` (list icon) toggles the navigation drawer on click
+- Public API: `open()` / `close()` via `Shopware.callMethod('ViewsTheme:Navigation:Drawer:Action', 'open'|'close')`
+- Drawer shell lifecycle (hard rule): **(re)fetch on every open**, **remove from DOM when close finishes** — never cache HTML or keep a closed mount (see [JS conventions](../conventions/javascript.md#lazy-loaded-shells-critical))
+- Generic `ViewsTheme:Drawer` primitive owns open/close, backdrop, Escape, focus trap, body scroll lock
+- Open/close motion: panel slides from `side`, backdrop fades (`--vi-drawer-duration`, default 250ms); `prefers-reduced-motion: reduce` skips transitions
+- Drawer header title hosts `Wishlist:Action` (when enabled) + `Account:Action` with default visible labels; close stays on the right
+- `Navigation:Drawer:Footer` hosts `Language:Action` + `Currency:Action` (`placement="top-start"`) when either collection has more than one item; languages/currencies loaded via `HeaderPageletLoader` in the drawer controller and forwarded from `Navigation:Drawer`. Chrome is Footer CVA slots `language` / `currency` (empty bases). Override via Footer `:cva` or `language:class` / `currency:class`; forward each action’s CVA with `language:cva` / `currency:cva`; placement via `language:placement` / `currency:placement`. `Navigation:Drawer` still mounts Footer with languages and currencies only
+- Below `lg`, header wishlist is `d-none d-lg-inline-flex`; header account uses Dropdown `host:class="vi-dropdown-host--lg-up d-none d-lg-contents"`; use the drawer actions instead
+- Header instances pass `:label="false"` on Wishlist and `:toggle:label="false"` on Account (icon-only); drawer keeps default label snippets
+- Navigation levels use core-style **drill-down** (depth 1 per request) via `MenuOffcanvasPageletLoader`
+- Item label opens the category; optional `vi_navigation_image` thumb before the label; caret drills deeper; no caret when the category has no children
+- Close via `Drawer:Close` / `Backdrop`, Escape, or toggling the action again
+- Focus returns to the action after the close transition finishes
+
+### Header actions in the drawer title
+
+`Navigation:Drawer` overrides Panel `header` with `Navigation:Drawer:Header`, which wraps `Drawer:Header` and fills `title` with icon+label actions (not the scalar `title` prop). Drawer root keeps `label` for `aria-label`.
+
+`Wishlist:Action` composes `ViewsTheme:Button` (`type="link"`, `icon="heart"`, `color="none"`). Badge is `Wishlist:Action:Badge` in Button `prepend` (theme JS on `Wishlist:Changed`, not core widget); live region is inline in `append`. Owner is always-mounted `ViewsTheme:Wishlist` in header actions. Wishlist is a root-host leaf (`:label="false"`); Account toggle chrome is nest `toggle:label` (`:toggle:label="false"`). Drawer uses defaults; header hides labels.
+
+Drawer chrome for those actions lives on `Navigation:Drawer:Header` CVA (`wishlist`, `wishlistLabel`, `account`, `accountLabel`). A caller overrides it with `:cva` or `wishlist:class` / `account:class`. Child CVA forwards through the nests: `wishlist:cva` and `account:cva` (deep-merged by each child). Drawer classes stay extras on top of the child’s own bases. `Navigation:Drawer` still mounts Header with no extra props; override on a `Navigation:Drawer:Header` call or a `header` block override.
+
+Wishlist uses drawer-scoped **props** (`badgeId` / `liveId`) so it can coexist with the header instance:
+
+| Element | Prop | Header (default) | Drawer |
+|---------|------|------------------|--------|
+| Badge | `badgeId` | `wishlist-basket` | `vi-navigation-drawer-wishlist-basket` |
+| Live region | `liveId` | `wishlist-basket-live-area` | `vi-navigation-drawer-wishlist-live` |
+
+Wire-up: `Page:Header:Actions` (desktop) and `Navigation:Drawer:Header` title (mobile entry).
+
+## How it works
+
+### Open flow
+
+1. `ViewsTheme:Navigation:Drawer:Action` reads `drawerUrl` from `data-component-options`
+2. **Click:** if Drawer open → shell `close()` (no fetch); else Action `open()`
+3. **`open()`** (click or `callMethod`): if already open → no-op; else **always** fetch `frontend.views-theme.navigation.drawer` (optional `navigationId` from `window.activeNavigationId`)
+4. Response root is `ViewsTheme:Drawer` (`#vi-navigation-drawer`); any leftover mount is removed, then the new root is appended to `document.body`
+5. Drawer + Panel + Menu + Drill children initialize; Action calls Drawer `open()` (logs if instance never mounts)
+6. Drawer emits `ViewsTheme:Drawer:Open` via `Shopware.emitQueued`; Action sets `aria-expanded`
+7. On `ViewsTheme:Drawer:Close`: Action sets `aria-expanded`, returns focus, **removes** the drawer root (next open is a full fetch + mount)
+
+### Menu item interaction
+
+- **Label** (`Item` link): navigates to the category page (`category_url`). Folders use `#` (no listing).
+- **Image** (optional): category custom field `vi_navigation_image` (media UUID). When set, Menu batch-resolves media via `searchMedia` and passes it to Item; Item renders a thumb before the label inside the link. Omitted when unset.
+- **Caret** (`Item` → `Drill`, only when `visibleChildCount > 0`): drills into the submenu; omitted for leaf categories.
+- **Back** / **ShowAll**: full-row `Drill` with `direction: back`; ShowAll label `viewsTheme.navigationDrawer.showAll` (en: “Show all”)
+- **Active**: “show category” link to the current level’s category page (after ShowAll in the level header)
+
+### Category navigation image
+
+| Piece | Detail |
+|-------|--------|
+| Custom field | `vi_navigation_image` on category (media type, translated) |
+| Resolve | `Menu` collects IDs from the current level → `searchMedia(ids, context.context)` once |
+| Render | `Item` prop `image`; `{% sw_thumbnails %}` before label when present |
+| Image tokens | `--vi-image-size` (`28px`), `--vi-image-radius` (`4px`), `--vi-image-ar` (`1 / 1`), `--vi-image-fit` (`cover`) |
+
+### Drill-down flow
+
+1. `Navigation:Drawer:Drill` (Item caret, Back, ShowAll) handles click
+2. Drill `emit`s `ViewsTheme:Navigation:Drawer:Menu:Drill` with `{ url, source, direction }` (`forward` default; Back/ShowAll pass `back`)
+3. Menu listens, ignores events whose `source` is outside itself; single `_busy` flight covers fetch + slide
+4. Fetches/caches HTML, parses with `<template>`, takes `:scope > [data-level]`
+5. Level motion (see below)
+
+### Level motion
+
+- Flex scroll chain: Panel body (`min-h-0` + `overflow-hidden` + column flex) → Menu (`col` + `min-h-0` + `overflow-hidden`) → nested `Scroll:Area` (`flex-1 min-h-0`, edge fades) so long levels scroll inside the panel
+- Menu owns drill orchestration; `Scroll:Area` is the scrollport (not Menu root) — same composition pattern as Search results
+- Menu body is a single `[data-level]` surface inside `Scroll:Area`; drill keeps the outgoing level and appends the incoming one to the scrollport
+- After each level swap, scroll resets to top (Scroll:Area edge flags re-sync on scroll)
+- Two-phase slide: set `data-direction` + level states `from`/`enter` (absolute `inset: 0` in the relative scrollport, no transition) → set `data-animating` → flip to `out`/`in`
+- Scrollport (`.vi-navigation-drawer-menu__scroll`) uses `flex: 1 1 0` + `min-height: 0` so height comes from the Menu column, not content — levels can be absolute without a JS height lock
+- Forward: outgoing exits start-ward (`-100%`), incoming enters from end; back is the reverse
+- Levels use an opaque body background and incoming stacks above outgoing so labels never show through
+- Token: `--vi-menu-duration` (default `250ms`) — CSS is SoT; JS reads it for the transform fallback
+- Outgoing is `inert` during the slide
+- `prefers-reduced-motion: reduce` skips the slide and swaps the level immediately
+
+### Controller
+
+| Route name | Path | Method |
+|------------|------|--------|
+| `frontend.views-theme.navigation.drawer` | `/vi/navigation/drawer` | `GET` (XHR) |
+| `frontend.views-theme.navigation.drawer.menu` | `/vi/navigation/drawer/menu` | `GET` (XHR) |
+
+| Action | Load | App hooks | Render |
+|--------|------|-----------|--------|
+| `drawer` | `MenuOffcanvasPageletLoader` → navigation; then `HeaderPageletLoader` → languages/currencies | `MenuOffcanvasPageletLoadedHook`, then `HeaderPageletLoadedHook` | `ViewsTheme:Navigation:Drawer` via `renderComponent()` |
+| `menu` | `MenuOffcanvasPageletLoader` only | `MenuOffcanvasPageletLoadedHook` | `ViewsTheme:Navigation:Drawer:Menu` via `renderComponent()` |
+
+Header load + `header-pagelet-loaded` run only on full drawer open (not menu drill). See [architecture — data + App hooks](../architecture.md#theme-xhr-controllers-data-app-hooks).
+
+## Hooks
+
+| Component | Attribute |
+|-----------|-----------|
+| Action (`Button` root) | `data-component="ViewsTheme:Navigation:Drawer:Action"` |
+| Drawer root (mount) | `data-component="ViewsTheme:Drawer"` / `#vi-navigation-drawer` |
+| Panel | `data-component="ViewsTheme:Drawer:Panel"` |
+| Backdrop | `data-component="ViewsTheme:Backdrop"` |
+| Close | `data-component="ViewsTheme:Drawer:Close"` |
+| Menu | `data-component="ViewsTheme:Navigation:Drawer:Menu"` |
+| Menu scrollport | `data-component="ViewsTheme:Scroll:Area"` (nested under Menu) |
+| Drill | `data-component="ViewsTheme:Navigation:Drawer:Drill"` |
+
+Action options (`data-component-options`): `drawerUrl`.
+
+Events:
+
+- `ViewsTheme:Drawer:Open` / `:Close` (payload: drawer element)
+- `ViewsTheme:Navigation:Drawer:Menu:Drill` (payload: `{ url, source, direction }`)
+
+See [JavaScript conventions](../conventions/javascript.md).
+
+## Generic Drawer
+
+`ViewsTheme:Drawer` is reusable (side `start` \| `end`, `title` prop, Panel/Close + shared `Backdrop`). Callers that need a body override the `panel` block and put content on `Drawer:Panel` (no multi-hop block capture). Navigation does this; other features may reuse the same pattern later.
+
+### Motion
+
+- Root uses `data-side` + `data-open` (`true`/`false`); CSS in `Drawer.css` drives slide/fade
+- `open()` shows the layer, reflows, then sets `data-open="true"`
+- `close()` sets `data-open="false"`; `Drawer:Panel` calls `onPanelTransitionEnd` on transform end (timeout fallback remains)
+- Token: `--vi-drawer-duration` (default `250ms`) — CSS is SoT; JS reads via options `durationVar` / `durationFallback` for the close timeout
+
+## Key source files
+
+| Area | Path |
+|------|------|
+| Controller | `src/Controller/NavigationDrawerController.php` |
+| Drawer primitive | `src/Resources/views/components/Drawer.*` |
+| Panel / Header / Close | `src/Resources/views/components/Drawer/{Panel,Header,Close}.*` |
+| Backdrop (shared) | `src/Resources/views/components/Backdrop.*` |
+| Navigation compose | `src/Resources/views/components/Navigation/Drawer.html.twig` |
+| Drawer header | `src/Resources/views/components/Navigation/Drawer/Header.*` |
+| Drawer footer | `src/Resources/views/components/Navigation/Drawer/Footer.*` |
+| Action | `src/Resources/views/components/Navigation/Drawer/Action.*` |
+| Menu (+ drill orchestration / level motion) | `src/Resources/views/components/Navigation/Drawer/Menu.*` |
+| Scroll area (menu scrollport) | `src/Resources/views/components/Scroll/Area.*` |
+| Drill | `src/Resources/views/components/Navigation/Drawer/Drill.*` |
+| Menu header | `src/Resources/views/components/Navigation/Drawer/Menu/Header.*` |
+| Items | `src/Resources/views/components/Navigation/Drawer/{Item,Back,ShowAll,Active}.*` |
+| Header wire-up | `src/Resources/views/components/Page/Header/Actions.html.twig` |
+
+## Out of scope (v1)
+
+- Cookie offcanvas → `Drawer` (cart drawer: [cart-drawer.md](cart-drawer.md))
+- Auto-reopening the theme drawer after language/currency switch (page reloads closed)

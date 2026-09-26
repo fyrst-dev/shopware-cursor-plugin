@@ -59,6 +59,11 @@
       "name": "shopware-documentation",
       "source": "./plugins/shopware-documentation",
       "description": "Documentation-surface structuring: size budgets, splitting, and cross-reference integrity."
+    },
+    {
+      "name": "views-theme",
+      "source": "./plugins/views-theme",
+      "description": "ViewsTheme storefront conventions, UX Twig components, and child-theme workflows."
     }
   ]
 }

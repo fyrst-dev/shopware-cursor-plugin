@@ -10,7 +10,7 @@ This repository is a **Cursor-only** plugin marketplace. Do not add Claude Code 
 
 ## Understanding Slash Commands
 
-**Slash commands are executable code, not documentation.** Markdown files in `commands/` are instruction files Cursor reads when users invoke the command. This marketplace currently has none.
+**Slash commands are executable code, not documentation.** Markdown files in `commands/` are instruction files Cursor reads when users invoke the command. `views-theme` ships `/vi-implement`, `/vi-new-component`, and `/vi-review-conventions` (no unprefixed aliases).
 
 ## Understanding Developer Documentation
 
@@ -21,6 +21,7 @@ Runtime files (executed by Cursor):
 - `skills/*/SKILL.md` and `skills/*/references/*.md`
 - `agents/*.md`
 - `commands/*.md`
+- `rules/*.mdc` (always-apply Cursor rules; `test-writing` sets `"rules": []` so its PHPUnit catalog is not loaded)
 - `hooks/hooks.json` and hook scripts
 - `mcp.json`
 - `.cursor-plugin/plugin.json`

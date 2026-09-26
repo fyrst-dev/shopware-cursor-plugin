@@ -111,8 +111,14 @@ plugin-tests/
 │   ├── fixtures/
 │   └── test_helper/
 │       └── common_setup.bash
-└── chunkhound-integration/
-    ├── sweep.bats
+├── chunkhound-integration/
+│   ├── sweep.bats
+│   └── test_helper/
+│       └── common_setup.bash
+└── views-theme/
+    ├── deny_theme_builds.bats
+    ├── resolve_docs.bats
+    ├── refresh_docs.bats
     └── test_helper/
         └── common_setup.bash
 ```

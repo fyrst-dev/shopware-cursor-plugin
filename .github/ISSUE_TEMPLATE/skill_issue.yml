@@ -56,6 +56,11 @@ body:
         - test-writing / phpunit-unit-test-generation
         - test-writing / phpunit-unit-test-reviewing
         - test-writing / phpunit-unit-test-writing
+        - views-theme / building-views-theme-component
+        - views-theme / extending-views-theme-child
+        - views-theme / following-views-theme-conventions
+        - views-theme / implementing-views-theme-feature
+        - views-theme / writing-views-theme-javascript
         - Other
     validations:
       required: true

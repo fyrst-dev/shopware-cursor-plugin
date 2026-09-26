@@ -34,6 +34,7 @@ Install `dev-tooling` and `plugin-setup` first. Ask the agent to set up the plug
 | [code-migration](#code-migration)                         | Technical migration skills. First skill migrates extension XML configuration to PHP before Shopware 6.8 removes XML support.             | 🎯 Skills                                           |
 | [plugin-setup](#plugin-setup)                             | Interactive setup skills for dev-tooling and chunkhound-integration. Install alongside a plugin, run setup, uninstall.                   | 🎯 Skills                                           |
 | [shopware-documentation](#shopware-documentation)         | Documentation-surface structuring: size budgets, one subject per file, splitting, and cross-reference integrity, via measurement script. | 🎯 Skills                                           |
+| [views-theme](#views-theme)                               | ViewsTheme storefront conventions for Shopware 6.7: UX Twig, CVA, co-located JS, child-theme workflows, and a hook that denies theme builds. | 🎯 Skills · 🤖 Agents · ⌨️ Commands · 🪝 Hooks · 📐 Rules |
 
 ### dev-tooling
 
@@ -176,6 +177,24 @@ Where does this documentation belong?
 The `structuring-documentation` skill activates automatically. Prerequisites: a Unix-like host (bash and POSIX utilities; present on macOS and Linux). No other plugins required.
 
 See [full documentation](./plugins/shopware-documentation/README.md) for the script modes, budget flags, and scope rules.
+
+### views-theme
+
+ViewsTheme storefront conventions for Shopware 6.7 shops and child themes. Skills route to ViewsTheme `docs/` (live parent docs if the workspace has them, otherwise a pinned snapshot). Always-on rules cover no compiles, surgical holistic edits, px/CVA, UX components, and `ShopwareComponent` JS. A `beforeShellExecution` hook denies theme and asset builds.
+
+```
+Follow ViewsTheme conventions for this change
+Add a ViewsTheme component
+/vi-implement
+/vi-new-component Product:Badge:Dot
+/vi-review-conventions
+```
+
+Commands are `/vi-implement`, `/vi-new-component`, and `/vi-review-conventions` only — no unprefixed aliases. No MCP. No Cloud Agent shop scripts.
+
+Prerequisites: a ViewsTheme checkout, a child theme, or a Shopware project that contains ViewsTheme. Reload after install.
+
+See [full documentation](./plugins/views-theme/README.md) for skills, commands, doc resolution, and the deny hook.
 
 ## 📦 Agent Skills Export
 

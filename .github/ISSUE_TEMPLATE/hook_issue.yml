@@ -37,6 +37,7 @@ body:
         - chunkhound-integration
         - dev-tooling
         - shopware-env
+        - views-theme
         - Other
     validations:
       required: true

@@ -36,6 +36,7 @@ body:
         - test-writing / test-adversary
         - test-writing / test-generator
         - test-writing / test-reviewer
+        - views-theme / views-theme-developer
         - Other
     validations:
       required: true

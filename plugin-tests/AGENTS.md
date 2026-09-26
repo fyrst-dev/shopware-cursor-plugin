@@ -91,5 +91,6 @@ Tests validate scripts and shared modules located in the plugins directory:
 |---------------------------|--------------------------------------------------------------------------------------------------------|
 | `plugin-tests/dev-tooling/` | `plugins/dev-tooling/hooks/scripts/`, `plugins/dev-tooling/shared/`, `plugins/dev-tooling/mcp-server-*/lib/` |
 | `plugin-tests/mcp-shared/`  | `templates/mcp-shared/` — sourced directly, never a plugin copy, so one suite covers every consumer      |
+| `plugin-tests/views-theme/` | `plugins/views-theme/scripts/` (deny hook, live-docs resolve, snapshot refresh)                          |
 
 `plugins/*/shared/mcpserver_core.sh` is vendored from `shopwareLabs/bash-mcp-sdk` and tested there, not here.
