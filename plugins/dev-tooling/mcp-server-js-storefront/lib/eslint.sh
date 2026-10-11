@@ -2,17 +2,39 @@
 # ESLint tool implementation for Storefront Tooling MCP Server
 # Provides eslint_check and eslint_fix MCP tools
 #
-# The Storefront splits ESLint across two trees:
-#   app tree        -> npm script "eslint:app", paths relative to the package
-#                      directory src/Storefront/Resources/app/storefront
-#   components tree -> npm script "eslint:components", which runs after
+# The Storefront's "lint:js" script lints two trees with two ESLint calls:
+#   app tree        -> `eslint --no-error-on-unmatched-pattern
+#                      --report-unused-disable-directives` in the package
+#                      directory src/Storefront/Resources/app/storefront, so
+#                      paths are relative to it
+#   components tree -> the same flags plus `--config
+#                      ./app/storefront/eslint.config.js`, run after
 #                      `cd ../..`, so paths are relative to
 #                      src/Storefront/Resources
 # A run without paths executes the aggregate (lint:js / lint:js:fix), whose own
-# targets stay authoritative. A run with paths never reaches the aggregate: on a
-# version predating the split, or with either base script otherwise unusable,
-# the path-scoped run fails rather than widening to the aggregate's targets.
+# targets stay authoritative. A run with paths never reaches the aggregate: it
+# runs those two calls without their targets through the package's own ESLint
+# binary (`npm exec --no`), so the caller's paths are the ONLY targets, and it
+# fails rather than widening to the aggregate's targets when that binary is not
+# installed.
+#
+# The components call has to start in ../..: ESLint reports a file outside its
+# base path as "File ignored because outside of base path" and still exits 0,
+# and with an explicit --config the base path is the working directory. It
+# still has to start through npm in the package directory: ../.. holds no
+# package.json, so `npm exec` started there would resolve its binary from
+# another directory, and wrap_npm_command's ddev branch hands a command to
+# `ddev npm` only when it starts with npm; the host shell splits any other
+# compound command at its first `&&`, so only the cd would reach the container.
+# `npm exec -c` runs its string through a shell in the package directory with
+# the package's node_modules/.bin first on PATH, and the string does the cd.
 
+STOREFRONT_ESLINT_BINARY="eslint"
+# Flags both "lint:js" ESLint calls pass besides their targets.
+STOREFRONT_ESLINT_FLAGS="--no-error-on-unmatched-pattern --report-unused-disable-directives"
+# The config the components call names, relative to its ../.. working
+# directory.
+STOREFRONT_ESLINT_COMPONENTS_CONFIG="./app/storefront/eslint.config.js"
 STOREFRONT_ESLINT_APP_BASE="."
 STOREFRONT_ESLINT_COMPONENTS_BASE="../.."
 # Extensions the Storefront ESLint config can match. A path that resolves to no
@@ -49,29 +71,15 @@ _eslint_rebase_app_path() {
 # paths, so the aggregate is never a fallback here: its body names its own
 # targets, and npm appends `--` arguments after them, so substituting it would
 # widen the run instead of narrowing it to the requested paths.
-# Args: $1 = target-less npm script for this tree,
-#       $2 = aggregate npm script, named in the refusal,
-#       $3 = tree name, for the refusal message,
-#       $4 = base directory for the existence check,
-#       $5 = pre-path flag string (may be empty), $6.. = rebased paths
+# Args: $1 = tree name, "app" or "components",
+#       $2 = base directory for the existence check,
+#       $3 = pre-path flag string (may be empty), $4.. = rebased paths
 # Stdout: linter output, or the failure message
 _eslint_invoke_tree() {
-    local script="$1"
-    local aggregate="$2"
-    local tree="$3"
-    local base_dir="$4"
-    local flag_string="$5"
-    shift 5
-
-    local body
-    local exit_code=0
-    body=$(npm_script_append_gate "${script}") || exit_code=$?
-
-    if [[ "${exit_code}" -ne 0 ]]; then
-        printf '%s\n' "${body}"
-        printf '%s\n' "Refusing to lint the ${tree} tree with paths: a path-scoped run needs the target-less npm script \"${script}\", which is unusable here. The aggregate \"${aggregate}\" script is not a substitute — its body names its own targets and npm appends arguments after them, so it would cover that whole target set on top of the requested paths rather than only the requested paths."
-        return 1
-    fi
+    local tree="$1"
+    local base_dir="$2"
+    local flag_string="$3"
+    shift 3
 
     local missing_report
     if ! missing_report=$(assert_paths_lintable "${base_dir}" "${STOREFRONT_ESLINT_EXTENSIONS}" "$@"); then
@@ -85,26 +93,41 @@ _eslint_invoke_tree() {
         quoted+=("$(shell_quote_arg "${p}")")
     done
 
-    local cmd="npm run ${script} --"
-    if [[ -n "${flag_string}" ]]; then
-        cmd="${cmd} ${flag_string}"
+    local eslint_cmd="${STOREFRONT_ESLINT_BINARY} ${STOREFRONT_ESLINT_FLAGS}"
+    # _eslint_dispatch refuses the components tree under a scope, so no scope
+    # config reaches this call.
+    if [[ "${tree}" == "components" ]]; then
+        eslint_cmd="${eslint_cmd} --config ${STOREFRONT_ESLINT_COMPONENTS_CONFIG}"
     fi
-    cmd="${cmd} ${quoted[*]}"
+    if [[ -n "${flag_string}" ]]; then
+        eslint_cmd="${eslint_cmd} ${flag_string}"
+    fi
+    eslint_cmd="${eslint_cmd} ${quoted[*]}"
 
-    log "INFO" "Running ESLint (storefront, ${script}): ${cmd}"
+    local cmd
+    if [[ "${tree}" == "components" ]]; then
+        # The inner string is quoted once more for the shell that parses this
+        # command; npm's own shell then parses it, including each path's quotes.
+        cmd="npm exec --no -c $(shell_quote_arg "cd ${STOREFRONT_ESLINT_COMPONENTS_BASE} && ${eslint_cmd}")"
+    else
+        cmd="npm exec --no -- ${eslint_cmd}"
+    fi
+
+    log "INFO" "Running ESLint (storefront, ${tree} tree): ${cmd}"
 
     exec_npm_command "${cmd}"
 }
 
 # Route the caller's paths onto the two trees and run each one that is used.
-# Args: $1 = tool arguments JSON, $2 = fallback npm script,
+# Args: $1 = tool arguments JSON, $2 = aggregate npm script,
 #       $3 = pre-path flag string (may be empty), $4 = scope-configured ESLint
-#       config (may be empty)
+#       config (may be empty), $5 = tool name, for refusals
 _eslint_dispatch() {
     local args="$1"
-    local fallback="$2"
+    local aggregate="$2"
     local flag_string="$3"
     local scoped_config="$4"
+    local tool_name="$5"
 
     local paths_json paths
     paths_json=$(echo "${args}" | jq -c '.paths // []')
@@ -121,16 +144,17 @@ _eslint_dispatch() {
 
     if [[ -z "${paths}" ]]; then
         # A no-path run executes the aggregate script bare. That script chains
-        # bare `npm run` calls, so a flags-only append lands past npm's own CLI
-        # parser and never reaches ESLint — npm_script_append_gate refuses it.
+        # two ESLint calls and ends in a subshell, so an appended flag would
+        # land after that subshell, outside both calls — npm_script_append_gate
+        # refuses it.
         # Running bare anyway would silently substitute the package script's own
         # configuration for the scope-selected one.
         if [[ -n "${scoped_config}" ]]; then
-            printf '%s\n' "Refusing to run: scope \"${SCOPE_NAME}\" selects the ESLint config \"${scoped_config}\", but a run without paths can only execute \"npm run ${fallback}\" bare, which would apply the package script's own config instead. \"${fallback}\" chains bare run-scripts, so the config cannot be appended to it either. Pass paths so the run is routed to eslint:app / eslint:components, or call with scope \"shopware\"."
+            printf '%s\n' "Refusing to run: scope \"${SCOPE_NAME}\" selects the ESLint config \"${scoped_config}\", but a run without paths can only execute \"npm run ${aggregate}\" bare, which would apply the package script's own config instead. \"${aggregate}\" chains two ESLint calls, so the config cannot be appended to it either. Pass paths so the run executes ESLint on them directly, or call with scope \"shopware\"."
             return 1
         fi
-        local bare_cmd="npm run ${fallback}"
-        log "INFO" "Running ESLint (storefront, ${fallback}): ${bare_cmd}"
+        local bare_cmd="npm run ${aggregate}"
+        log "INFO" "Running ESLint (storefront, ${aggregate}): ${bare_cmd}"
         exec_npm_command "${bare_cmd}"
         return
     fi
@@ -147,14 +171,26 @@ _eslint_dispatch() {
         fi
     done < <(printf '%s\n' "${paths_json}" | jq -r '.[]')
 
+    # The components call is the core Storefront's own: it changes to ../.. and
+    # names ./app/storefront/eslint.config.js, which exist only relative to
+    # src/Storefront/Resources/app/storefront. Under a scope the working
+    # directory is the scope's package instead, where both name something else.
+    if [[ ${#component_paths[@]} -gt 0 && -n "${SCOPE_CWD:-}" ]]; then
+        printf '%s\n' "Refusing to run ${tool_name} with paths: scope \"${SCOPE_NAME}\" runs in \"${SCOPE_CWD}\", but these paths route to the core Storefront components tree, which is linted from src/Storefront/Resources with ./app/storefront/eslint.config.js: ${component_paths[*]}. Lint them with scope \"shopware\"."
+        return 1
+    fi
+
+    # Both trees resolve the binary from the package directory.
+    js_assert_local_binary "${tool_name}" "${STOREFRONT_ESLINT_BINARY}" "${aggregate}" || return 1
+
     local overall=0
     local tree_output
     local tree_code
 
     if [[ ${#app_paths[@]} -gt 0 ]]; then
         tree_code=0
-        tree_output=$(_eslint_invoke_tree "eslint:app" "${fallback}" "app" \
-            "${STOREFRONT_ESLINT_APP_BASE}" "${flag_string}" "${app_paths[@]}") || tree_code=$?
+        tree_output=$(_eslint_invoke_tree "app" "${STOREFRONT_ESLINT_APP_BASE}" \
+            "${flag_string}" "${app_paths[@]}") || tree_code=$?
         printf '%s\n' "${tree_output}"
         if [[ "${tree_code}" -ne 0 ]]; then
             overall="${tree_code}"
@@ -163,8 +199,8 @@ _eslint_dispatch() {
 
     if [[ ${#component_paths[@]} -gt 0 ]]; then
         tree_code=0
-        tree_output=$(_eslint_invoke_tree "eslint:components" "${fallback}" "components" \
-            "${STOREFRONT_ESLINT_COMPONENTS_BASE}" "${flag_string}" "${component_paths[@]}") || tree_code=$?
+        tree_output=$(_eslint_invoke_tree "components" "${STOREFRONT_ESLINT_COMPONENTS_BASE}" \
+            "${flag_string}" "${component_paths[@]}") || tree_code=$?
         printf '%s\n' "${tree_output}"
         if [[ "${tree_code}" -ne 0 ]]; then
             overall="${tree_code}"
@@ -205,7 +241,7 @@ tool_eslint_check() {
 
     [[ -n "${scoped_config}" ]] && flags+=("--config" "${scoped_config}")
 
-    _eslint_dispatch "${args}" "lint:js" "${flags[*]}" "${scoped_config}"
+    _eslint_dispatch "${args}" "lint:js" "${flags[*]}" "${scoped_config}" "eslint_check"
 }
 
 # ESLint fix (auto-fix violations)
@@ -230,5 +266,5 @@ tool_eslint_fix() {
     local -a flags=("--fix")
     [[ -n "${scoped_config}" ]] && flags+=("--config" "${scoped_config}")
 
-    _eslint_dispatch "${args}" "lint:js:fix" "${flags[*]}" "${scoped_config}"
+    _eslint_dispatch "${args}" "lint:js:fix" "${flags[*]}" "${scoped_config}" "eslint_fix"
 }

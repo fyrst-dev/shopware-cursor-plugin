@@ -11,6 +11,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
+source "${SCRIPT_DIR}/lib/js_binary.sh"
 
 parse_hook_input
 load_mcp_config "js-tooling"
@@ -33,9 +34,9 @@ is_admin_context() {
         return 1
     fi
     # Unknown context - Admin hook handles generic commands.
-    # This is what claims a bare `npm run jest:base`, a script name both
-    # packages declare. The Storefront hook declines an unknown context, so
-    # exactly one of the two hooks blocks it.
+    # This is what claims a bare `npm run jest:base`, a script name that carries
+    # no side-specific marker. The Storefront hook declines an unknown context,
+    # so exactly one of the two hooks blocks it.
     return 0
 }
 
@@ -63,7 +64,7 @@ if echo "$COMMAND" | grep -qE '(^|;|&&|\|)\s*npm\s+run\s+lint:debugging(\s|--|$)
         "Use eslint_check with paths for linting, or eslint_fix with paths to auto-fix." "eslint_check"
 fi
 
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|)\s*npx\s+eslint(\s|$)'; then
+if runs_binary eslint; then
     block_tool "js-admin-tooling" \
         "Use eslint_check for linting or eslint_fix to auto-fix." "eslint_check"
 fi
@@ -87,7 +88,7 @@ if echo "$COMMAND" | grep -qE '(^|;|&&|\|)\s*npm\s+run\s+stylelint:base(\s|--|$)
         "Use stylelint_check with paths for SCSS/CSS linting, or stylelint_fix with paths to auto-fix." "stylelint_check"
 fi
 
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|)\s*npx\s+stylelint(\s|$)'; then
+if runs_binary stylelint; then
     block_tool "js-admin-tooling" \
         "Use stylelint_check for SCSS/CSS linting or stylelint_fix to auto-fix." "stylelint_check"
 fi
@@ -111,7 +112,7 @@ if echo "$COMMAND" | grep -qE '(^|;|&&|\|)\s*npm\s+run\s+prettier:base(\s|--|$)'
         "Use prettier_check with paths to verify formatting, or prettier_fix with paths to auto-format." "prettier_check"
 fi
 
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|)\s*npx\s+prettier(\s|$)'; then
+if runs_binary prettier; then
     block_tool "js-admin-tooling" \
         "Use prettier_check to verify formatting or prettier_fix to auto-format." "prettier_check"
 fi
@@ -130,7 +131,7 @@ if echo "$COMMAND" | grep -qE '(^|;|&&|\|)\s*npm\s+run\s+jest:base(\s|--|$)'; th
         "Use jest_run with testPathPatterns, testNamePattern, coverage, ci options." "jest_run"
 fi
 
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|)\s*npx\s+jest(\s|$)'; then
+if runs_binary jest; then
     block_tool "js-admin-tooling" \
         "Use jest_run with testPathPattern, testNamePattern, coverage options." "jest_run"
 fi
@@ -144,7 +145,7 @@ if echo "$COMMAND" | grep -qE '(^|;|&&|\|)\s*npm\s+run\s+lint:types(\s|$)'; then
         "Use tsc_check for TypeScript type checking." "tsc_check"
 fi
 
-if echo "$COMMAND" | grep -qE '(^|;|&&|\|)\s*npx\s+tsc(\s|$)'; then
+if runs_binary tsc; then
     block_tool "js-admin-tooling" \
         "Use tsc_check for TypeScript type checking." "tsc_check"
 fi

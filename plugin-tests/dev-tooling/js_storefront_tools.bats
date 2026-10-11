@@ -56,8 +56,7 @@ bats_test_function --description "blocks npm run production → suggests webpack
 bats_test_function --description "blocks npm run lint:js in Storefront context → suggests eslint_check" \
     -- js_storefront_hook_blocks "cd src/Storefront && npm run lint:js" "eslint_check"
 # `lint:js:fix` carries a colon where the context detector's trailing
-# alternation expects whitespace or end-of-string, so a bare invocation used to
-# miss the detector entirely and reach neither hook's block.
+# alternation expects whitespace or end-of-string.
 bats_test_function --description "blocks a bare npm run lint:js:fix → suggests eslint_fix" \
     -- js_storefront_hook_blocks "npm run lint:js:fix" "eslint_fix"
 bats_test_function --description "blocks a bare npm run lint:js → suggests eslint_check" \
@@ -88,11 +87,8 @@ bats_test_function --description "blocks composer ludtwig:storefront:fix → sug
     -- js_storefront_hook_blocks "composer ludtwig:storefront:fix" "ludtwig_fix"
 bats_test_function --description "blocks a bare ludtwig invocation → suggests ludtwig_check" \
     -- js_storefront_hook_blocks "ludtwig ." "ludtwig_check"
-# The bare-ludtwig block pattern's leading boundary used to require ^, ;, &&,
-# or |, so ludtwig invoked through a wrapper (e.g. "composer exec ludtwig")
-# passed the context detector but was never blocked. The fix recognizes a
-# fixed list of package runners immediately before the token rather than any
-# whitespace boundary — a plain-whitespace boundary over-blocks (see the
+# The bare-ludtwig block pattern recognizes a fixed list of package runners
+# immediately before the token: a plain-whitespace boundary over-blocks (see the
 # commit-message case below).
 bats_test_function --description "blocks ludtwig invoked via a known runner (composer exec) → suggests ludtwig_check" \
     -- js_storefront_hook_blocks "composer exec ludtwig" "ludtwig_check"
@@ -106,10 +102,14 @@ bats_test_function --description "blocks a runner passing its own flag before lu
     -- js_storefront_hook_blocks "npx -y ludtwig" "ludtwig_check"
 bats_test_function --description "blocks a runner passing a flag and -- before ludtwig (pnpm dlx) → suggests ludtwig_check" \
     -- js_storefront_hook_blocks "pnpm dlx --silent -- ludtwig" "ludtwig_check"
+bats_test_function --description "blocks npm x running ludtwig" \
+    -- js_storefront_hook_blocks "npm x ludtwig src/Storefront/Resources/views" "ludtwig_check"
 
-# The target-less base scripts the MCP tools route path-scoped runs at.
-# eslint:app, eslint:components and stylelint:app are Storefront-only names, so
-# they are also Storefront context signals in their own right.
+# The target-less base scripts. Shopware's Storefront package.json defines none
+# of them; the MCP tools call jest:base first, and the redirects stay for a
+# project that defines the others. eslint:app, eslint:components and
+# stylelint:app are Storefront names, so they are also Storefront context
+# signals in their own right.
 # bats test_tags=blocking,base-scripts
 bats_test_function --description "blocks npm run eslint:app → suggests eslint_check" \
     -- js_storefront_hook_blocks "npm run eslint:app" "eslint_check"
@@ -120,7 +120,49 @@ bats_test_function --description "blocks npm run stylelint:app → suggests styl
 bats_test_function --description "blocks npm run jest:base in Storefront context → suggests jest_run" \
     -- js_storefront_hook_blocks "cd src/Storefront && npm run jest:base" "jest_run"
 
-# jest:base is declared by both packages. The Admin hook's unknown-context
+# A linter binary run through `npx`, `npm exec` or its node_modules/.bin path.
+# The MCP servers run the binaries themselves through `npm exec --no --`, so an
+# agent that copies that form from a server log reaches the hook with it.
+# The Storefront server has no prettier and no tsc tool, so neither is here.
+# bats test_tags=blocking,binaries
+for _entry in eslint:eslint_check stylelint:stylelint_check jest:jest_run vitest:vitest_run; do
+    _binary="${_entry%%:*}"
+    _tool="${_entry##*:}"
+    for _form in "${JS_HOOK_BINARY_FORMS[@]}"; do
+        _command="cd src/Storefront/Resources/app/storefront && ${_form//BIN/${_binary}} src/js"
+        bats_test_function --description "blocks ${_command} → suggests ${_tool}" \
+            -- js_storefront_hook_blocks "${_command}" "${_tool}"
+    done
+done
+unset _entry _binary _tool _form _command
+
+# Without a Storefront marker the command belongs to the Admin hook, and a
+# command that names the Administration tree is never claimed here.
+# bats test_tags=context,allow
+storefront_hook_allows() {
+    run_hook "check-js-storefront-tools.sh" "$1"
+    assert_success
+}
+bats_test_function --description "allows npm exec eslint when no tree is named, which the Admin hook owns" \
+    -- storefront_hook_allows "npm exec --no -- eslint src"
+bats_test_function --description "allows npm exec stylelint in the Administration tree" \
+    -- storefront_hook_allows "cd src/Administration/Resources/app/administration && npm exec --no -- stylelint src"
+bats_test_function --description "allows npm exec tsc in the Storefront tree, which has no tsc tool" \
+    -- storefront_hook_allows "cd src/Storefront/Resources/app/storefront && npm exec --no -- tsc src"
+bats_test_function --description "allows npm exec vitest in the Administration tree" \
+    -- storefront_hook_allows "cd src/Administration/Resources/app/administration && npm exec --no -- vitest src"
+bats_test_function --description "allows npm exec prettier in the Storefront tree, which has no prettier tool" \
+    -- storefront_hook_allows "cd src/Storefront/Resources/app/storefront && npm exec --no -- prettier --check src"
+bats_test_function --description "allows npm exec running another tool in the Storefront tree" \
+    -- storefront_hook_allows "cd src/Storefront/Resources/app/storefront && npm exec -- some-other-tool src"
+bats_test_function --description "allows npm exec --package naming a linter but running another tool in the Storefront tree" \
+    -- storefront_hook_allows "cd src/Storefront/Resources/app/storefront && npm exec --package stylelint some-other-tool"
+bats_test_function --description "allows a linter name after another tool in an npx command in the Storefront tree" \
+    -- storefront_hook_allows "cd src/Storefront/Resources/app/storefront && npx --yes some-other-tool eslint"
+bats_test_function --description "allows a linter name inside quoted text after a semicolon in the Storefront tree" \
+    -- storefront_hook_allows 'cd src/Storefront && git commit -m "tidy; eslint config"'
+
+# jest:base carries no side-specific marker. The Admin hook's unknown-context
 # fallback owns the bare form, so this hook must decline it or the command
 # would be blocked twice with two different tool names.
 # bats test_tags=context,allow
@@ -192,3 +234,14 @@ bats_test_function --description "blocks npm run jest:base in Storefront context
     run_hook "check-js-storefront-tools.sh" "cd Storefront && npm run lint:js"
     assert_success
 }
+
+# `npm x` is the alias of `npm exec`; the -c / --call form runs a command
+# string, and a binary at a command position inside it is blocked.
+# bats test_tags=binary,blocking
+for spec in "eslint eslint_check" "stylelint stylelint_check" "jest jest_run" "vitest vitest_run"; do
+    read -r bin tool <<<"$spec"
+    bats_test_function --description "blocks npm x running ${bin} in the Storefront tree" \
+        -- js_storefront_hook_blocks "cd src/Storefront && npm x -- ${bin} src" "$tool"
+    bats_test_function --description "blocks npm exec -c running ${bin} in the Storefront tree" \
+        -- js_storefront_hook_blocks "cd src/Storefront && npm exec --no -c \"cd ../.. && ${bin} src\"" "$tool"
+done

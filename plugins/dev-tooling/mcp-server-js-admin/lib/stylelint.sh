@@ -3,43 +3,25 @@
 # Provides stylelint_check and stylelint_fix MCP tools
 #
 # Two routes, selected by whether the caller supplied paths:
-#   paths supplied -> npm script "stylelint:base", whose body is a target-less
-#                     `stylelint --cache`, so the caller's paths are the ONLY
-#                     targets.
+#   paths supplied -> the package's own Stylelint binary through
+#                     `npm exec --no -- stylelint --cache`, the flags of the
+#                     "lint:scss" body without its `**/*.scss` target, so the
+#                     caller's paths are the ONLY targets. A directory path is
+#                     narrowed to its .scss files, as that glob is.
 #   paths omitted  -> the aggregate script ("lint:scss" / "lint:scss-fix"),
 #                     whose body carries its own `**/*.scss` target, which
 #                     stays authoritative.
-# The aggregate is never a fallback for a path-scoped run. npm appends `--`
-# arguments to the END of the whole script body, so appending a path to a body
-# that already names `**/*.scss` widens the run to every SCSS file PLUS the
-# path — it can never narrow it. That matters most for stylelint_fix, which
-# writes: a widened fix modifies files the caller never named.
+# Why the aggregate never serves a path-scoped run: shared/js_paths.sh.
 #
 # The two routes also differ in where `--fix` comes from. "lint:scss-fix"
 # carries `--fix` in its own body, so the no-paths route must not add a second
-# one; "stylelint:base" carries none, so the path-scoped route must add it or
-# stylelint_fix silently runs as a check and writes nothing.
+# one; the path-scoped command carries none, so the path-scoped route must add
+# it or stylelint_fix silently runs as a check and writes nothing.
 
-ADMIN_STYLELINT_BASE_SCRIPT="stylelint:base"
-# Extensions Stylelint reads here. Neither .stylelintrc nor the CLI restricts
-# the set, so this is the pair the SCSS rulesets actually parse. A path that
-# resolves to no file with one of them lints nothing and still exits 0.
-ADMIN_STYLELINT_EXTENSIONS="scss css"
-
-# True when the path is a glob pattern Stylelint expands itself rather than a
-# literal filesystem path. The existence probe cannot resolve a glob, so glob
-# entries skip the guard. Nothing is lost by skipping it: Stylelint exits 1 on a
-# glob that matches no file and names the pattern, so the unmatched-glob case is
-# still reported to the caller by the tool itself.
-# Args: $1 = caller-supplied path
-if ! declare -F _stylelint_admin_path_is_glob >/dev/null; then
-    _stylelint_admin_path_is_glob() {
-        case "$1" in
-            *"*"*|*"?"*|*"["*) return 0 ;;
-        esac
-        return 1
-    }
-fi
+ADMIN_STYLELINT_BINARY="stylelint"
+# The extension the "lint:scss" glob `**/*.scss` names.
+ADMIN_STYLELINT_EXTENSIONS="scss"
+ADMIN_STYLELINT_DIRECTORY_GLOB="**/*.scss"
 
 # Run one Stylelint invocation for this tool.
 # Args: $1 = aggregate npm script used when no paths are supplied,
@@ -47,7 +29,9 @@ fi
 #       $3 = pre-path flag string used on both routes (may be empty),
 #       $4 = pre-path flag string used ONLY on the path-scoped route, for flags
 #            the aggregate script already carries in its own body (may be empty),
-#       $5 = tool arguments JSON
+#       $5 = tool arguments JSON,
+#       $6 = scope-configured Stylelint config, already part of $3 (empty
+#            when the scope configures none)
 # Stdout: linter output, or the failure message
 _stylelint_dispatch_admin() {
     local aggregate="$1"
@@ -55,6 +39,7 @@ _stylelint_dispatch_admin() {
     local flag_string="$3"
     local path_only_flags="$4"
     local args="$5"
+    local scoped_config="$6"
 
     local paths_json paths
     paths_json=$(echo "${args}" | jq -c '.paths // []')
@@ -84,61 +69,44 @@ _stylelint_dispatch_admin() {
             return 1
         fi
 
+        if [[ -n "${scoped_config}" ]]; then
+            local config_check
+            local config_code=0
+            config_check=$(js_stylelint_script_passes_config "${aggregate}" 3) || config_code=$?
+            if [[ "${config_code}" -eq 0 ]]; then
+                printf '%s\n' "Refusing to run: scope \"${SCOPE_NAME}\" selects the Stylelint config \"${scoped_config}\", but \"npm run ${aggregate}\" already passes a config of its own, and Stylelint refuses a second --config. Pass paths so the run uses the scope config alone, or call with scope \"shopware\"."
+                return 1
+            fi
+            if [[ "${config_code}" -ne 1 ]]; then
+                printf '%s\n' "${config_check}"
+                return 1
+            fi
+        fi
+
         local aggregate_cmd="npm run ${aggregate} -- ${flag_string}"
         log "INFO" "Running Stylelint (admin, ${aggregate}): ${aggregate_cmd}"
         exec_npm_command "${aggregate_cmd}"
         return
     fi
 
-    local -a supplied=()
-    local -a literals=()
-    local p
-    while IFS= read -r p; do
-        [[ -z "${p}" ]] && continue
-        supplied+=("${p}")
-        if ! _stylelint_admin_path_is_glob "${p}"; then
-            literals+=("${p}")
-        fi
-    done < <(printf '%s\n' "${paths_json}" | jq -r '.[]')
-
-    body=$(npm_script_append_gate "${ADMIN_STYLELINT_BASE_SCRIPT}") || gate_code=$?
-    if [[ "${gate_code}" -ne 0 ]]; then
-        printf '%s\n' "${body}"
-        printf '%s\n' "Refusing to run ${tool_name} with paths: a path-scoped run needs the target-less npm script \"${ADMIN_STYLELINT_BASE_SCRIPT}\", which is unusable here. The aggregate \"${aggregate}\" script is not a substitute — its body names its own targets and npm appends arguments after them, so it would cover that whole target set on top of the requested paths rather than only the requested paths."
+    local targets
+    if ! targets=$(js_path_scoped_targets "${tool_name}" "${ADMIN_STYLELINT_BINARY}" "${aggregate}" \
+        "${ADMIN_STYLELINT_EXTENSIONS}" "${ADMIN_STYLELINT_DIRECTORY_GLOB}" "Stylelint" "${paths_json}"); then
+        printf '%s\n' "${targets}"
         return 1
     fi
 
-    if [[ ${#literals[@]} -gt 0 ]]; then
-        local missing_report
-        if ! missing_report=$(assert_paths_lintable "." "${ADMIN_STYLELINT_EXTENSIONS}" "${literals[@]}"); then
-            printf '%s\n' "${missing_report}"
-            return 1
-        fi
+    # `--cache` is what the "lint:scss" body passes besides its target.
+    local cmd="npm exec --no -- ${ADMIN_STYLELINT_BINARY} --cache"
+    if [[ -n "${flag_string}" ]]; then
+        cmd="${cmd} ${flag_string}"
     fi
-
-    local -a quoted=()
-    for p in "${supplied[@]}"; do
-        quoted+=("$(shell_quote_arg "${p}")")
-    done
-
-    # The base script's body carries no mode flag of its own, so anything the
-    # aggregate would have supplied has to be added here instead.
-    local path_flags="${flag_string}"
     if [[ -n "${path_only_flags}" ]]; then
-        if [[ -n "${path_flags}" ]]; then
-            path_flags="${path_flags} ${path_only_flags}"
-        else
-            path_flags="${path_only_flags}"
-        fi
+        cmd="${cmd} ${path_only_flags}"
     fi
+    cmd="${cmd} ${targets}"
 
-    local cmd="npm run ${ADMIN_STYLELINT_BASE_SCRIPT} --"
-    if [[ -n "${path_flags}" ]]; then
-        cmd="${cmd} ${path_flags}"
-    fi
-    cmd="${cmd} ${quoted[*]}"
-
-    log "INFO" "Running Stylelint (admin, ${ADMIN_STYLELINT_BASE_SCRIPT}): ${cmd}"
+    log "INFO" "Running Stylelint (admin, npm exec): ${cmd}"
 
     exec_npm_command "${cmd}"
 }
@@ -176,7 +144,7 @@ tool_stylelint_check() {
 
     [[ -n "${scoped_config}" ]] && flags+=("--config" "${scoped_config}")
 
-    _stylelint_dispatch_admin "lint:scss" "stylelint_check" "${flags[*]}" "" "${args}"
+    _stylelint_dispatch_admin "lint:scss" "stylelint_check" "${flags[*]}" "" "${args}" "${scoped_config}"
 }
 
 # Stylelint fix (auto-fix violations)
@@ -210,5 +178,5 @@ tool_stylelint_fix() {
     fi
 
     # "--fix" is path-route only: the "lint:scss-fix" body already carries one.
-    _stylelint_dispatch_admin "lint:scss-fix" "stylelint_fix" "${flag_string}" "--fix" "${args}"
+    _stylelint_dispatch_admin "lint:scss-fix" "stylelint_fix" "${flag_string}" "--fix" "${args}" "${scoped_config}"
 }
