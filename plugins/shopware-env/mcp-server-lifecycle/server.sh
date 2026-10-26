@@ -37,10 +37,21 @@ export SCRIPT_DIR SHARED_DIR MCP_CONFIG_FILE MCP_TOOLS_LIST_FILE MCP_LOG_FILE PR
 source "${SHARED_DIR}/mcpserver_core.sh"
 source "${SHARED_DIR}/config.sh"
 
+# A relative override names a file under the project root, which is not this
+# process's directory when the host names the root in PROJECT_ROOT.
+if [[ -n "${MCP_PHP_TOOLING_CONFIG:-}" && "${MCP_PHP_TOOLING_CONFIG}" != /* ]]; then
+    MCP_PHP_TOOLING_CONFIG="${PROJECT_ROOT}/${MCP_PHP_TOOLING_CONFIG}"
+fi
+
 # Config is optional for this server — tools accept env args as fallback
 LIFECYCLE_HAS_CONFIG="false"
 if load_config "${PROJECT_ROOT}" 2>/dev/null; then
     LIFECYCLE_HAS_CONFIG="true"
+elif [[ -n "${CONFIG_LOAD_ERROR}" ]]; then
+    # Config files are present but unusable; starting without them would run
+    # every tool on the environment from its arguments instead.
+    printf 'ERROR: %s\n' "${CONFIG_LOAD_ERROR}" >&2
+    exit 1
 fi
 export LIFECYCLE_HAS_CONFIG
 

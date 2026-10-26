@@ -18,6 +18,7 @@ teardown() {
     unset LINT_ENV LINT_WORKDIR DOCKER_CONTAINER
     unset PROJECT_ROOT WORKTREE_EFFECTIVE_ROOT LINT_CONFIG_FILE
     unset COMPOSE_SERVICE COMPOSE_WORKDIR_OVERRIDE COMPOSE_FILE_OVERRIDE
+    unset WORKTREE_LAUNCH_CONFIG_FILE WORKTREE_SELECTED_CONFIG_FILE
 }
 
 # --- Native environment ---
@@ -92,23 +93,9 @@ teardown() {
 
 # --- DDEV environment ---
 
-@test "wrap_command ddev: non-composer command uses ddev exec" {
-    LINT_ENV="ddev"
-    run wrap_command "vendor/bin/phpunit"
-    assert_success
-    assert_output --partial "ddev exec vendor/bin/phpunit"
-}
-
-@test "wrap_command ddev: composer command uses ddev without exec" {
-    LINT_ENV="ddev"
-    run wrap_command "composer phpstan"
-    assert_success
-    assert_output "ddev composer phpstan"
-    refute_output --partial "ddev exec"
-}
-
 @test "wrap_command ddev: preserves XDEBUG_MODE prefix in ddev exec" {
     LINT_ENV="ddev"
+    LINT_WORKDIR="/var/www/html"
     run wrap_command "XDEBUG_MODE=coverage vendor/bin/phpunit --coverage-text"
     assert_success
     assert_output --partial "ddev exec XDEBUG_MODE=coverage vendor/bin/phpunit"
@@ -201,6 +188,43 @@ teardown() {
     run npm_script_body "unit:components"
     assert_success
     assert_output 'probed:npm pkg get "scripts.unit:components"'
+}
+
+# A warning on stderr must not reach the parsed probe answer. Every environment
+# shares exec_npm_command's redirect, so the native one stands for all of them.
+_npm_probe_native_env() {
+    LINT_ENV="native"
+    LINT_WORKDIR="${BATS_TEST_TMPDIR}"
+    JS_CONTEXT=""
+    SCOPE_CWD=""
+    SCOPE_JS_SUBDIR=""
+}
+
+@test "npm_script_body: a warning npm writes to stderr does not reach the parsed answer" {
+    _npm_probe_native_env
+    npm() {
+        printf '%s\n' 'npm warn config production Use --omit=dev instead.' >&2
+        printf '%s\n' '"eslint"'
+    }
+    run npm_script_body "lint"
+    assert_success
+    assert_output "eslint"
+}
+
+@test "npm_script_body: a failing probe is unusable and its message carries the stderr" {
+    _npm_probe_native_env
+    local log_file="${BATS_TEST_TMPDIR}/log"
+    log() { printf '%s: %s\n' "$1" "$2" >> "${log_file}"; }
+    npm() {
+        printf '%s\n' 'boom' >&2
+        return 1
+    }
+    run npm_script_body "lint"
+    assert_failure 2
+    assert_output ""
+    run cat "${log_file}"
+    assert_output --partial 'npm_script_body: probe for "lint" failed:'
+    assert_output --partial "boom"
 }
 
 @test "npm_script_body: refuses a script name that cannot be embedded, before probing" {
@@ -811,12 +835,83 @@ _assert_configured_mapping_refuses() {
     assert_equal "${rc}" 1
 }
 
+# The name selects how every later command is wrapped, and a name no wrapper
+# knows runs them on the host as though it were native. "dockr" is the typo that
+# does exactly that.
+@test "detect_environment: refuses an environment name no wrapper knows, naming it" {
+    LINT_CONFIG_FILE="${BATS_TEST_TMPDIR}/launch.json"
+    printf '%s\n' '{"environment":"dockr"}' > "${LINT_CONFIG_FILE}"
+    log() { printf '%s: %s\n' "$1" "$2"; }
+
+    run detect_environment "/project"
+    assert_failure 1
+    assert_output --partial "${LINT_CONFIG_FILE} declares environment \"dockr\", which this server does not recognize."
+    assert_output --partial "native, docker, docker-compose, vagrant, ddev"
+}
+
+@test "detect_environment: accepts each environment name the wrappers know" {
+    LINT_CONFIG_FILE="${BATS_TEST_TMPDIR}/launch.json"
+    local name
+    for name in native docker docker-compose vagrant ddev; do
+        jq -n --arg env "${name}" \
+            '{environment: $env, docker: {container: "web"}, "docker-compose": {service: "web"}}' \
+            > "${LINT_CONFIG_FILE}"
+        run detect_environment "/project"
+        assert_success
+    done
+}
+
 @test "detect_environment: refuses a docker config with no container" {
     LINT_CONFIG_FILE="${BATS_TEST_TMPDIR}/launch.json"
     printf '%s\n' '{"environment":"docker"}' > "${LINT_CONFIG_FILE}"
 
     run detect_environment "/project"
     assert_failure 1
+    assert_output --partial '".docker.container" is missing or empty'
+}
+
+# Merges a base file holding $1 with a second file, then runs detect_environment.
+# Args: $1 = the base file's JSON
+# Globals: sets MERGED_SOURCES to the two source paths as the refusal names them,
+#          MERGED_TEMP_FILE to the merged temp file, which no refusal may name
+_detect_merged_environment() {
+    local project="${BATS_TEST_TMPDIR}/project"
+    mkdir -p "${project}/.claude"
+    printf '%s\n' "$1" > "${project}/.mcp-php-tooling.json"
+    printf '{"default_scope":"x"}\n' > "${project}/.claude/.mcp-php-tooling.json"
+    MERGED_SOURCES="${project}/.mcp-php-tooling.json ${project}/.claude/.mcp-php-tooling.json"
+    local temp_record="${BATS_TEST_TMPDIR}/merged-temp-path"
+
+    run bash -c "
+        set -euo pipefail
+        log() { printf '%s: %s\n' \"\$1\" \"\$2\"; }
+        CONFIG_PREFIX='php-tooling'
+        source '${REPO_ROOT}/templates/mcp-shared/config.sh'
+        source '${REPO_ROOT}/templates/mcp-shared/environment.sh'
+        load_config '${project}' >/dev/null
+        printf '%s' \"\${_CONFIG_TEMP_FILE}\" > '${temp_record}'
+        detect_environment '${project}'
+    "
+    MERGED_TEMP_FILE=$(< "${temp_record}")
+}
+
+# A merged configuration lives in a temp file the server removes on exit, so
+# every refusal names the files the user can open.
+@test "detect_environment: each refusal of a merged configuration names its source files" {
+    _detect_merged_environment '{"environment":"dockr"}'
+    assert_failure 1
+    assert_output --partial "ERROR: the configuration merged from ${MERGED_SOURCES} declares environment \"dockr\""
+
+    _detect_merged_environment '{"docker":{"container":"web"}}'
+    assert_failure 1
+    assert_output --partial "ERROR: Missing 'environment' field in the configuration merged from ${MERGED_SOURCES}"
+
+    _detect_merged_environment '{"environment":"docker"}'
+    assert_failure 1
+    assert_output --partial "Refusing to run: the \"docker\" environment requires a container name in the configuration merged from ${MERGED_SOURCES},"
+    assert_output --partial "ERROR: Could not derive the environment from the configuration merged from ${MERGED_SOURCES}:"
+    assert [ -n "${MERGED_TEMP_FILE}" ]
+    refute_output --partial "${MERGED_TEMP_FILE}"
 }
 
 # A workdir of "/" is the container root. The join is where the doubled
@@ -838,6 +933,18 @@ _assert_configured_mapping_refuses() {
     run _set_workdir_from_config "/worktree" "${absent}" "docker"
     assert_failure 1
     assert_output --partial "${absent}"
+}
+
+# The name selects how every later command is wrapped; one no wrapper knows
+# would otherwise be derived as native and run every command on the host.
+@test "_set_workdir_from_config: refuses an environment name no wrapper knows, naming it" {
+    local config="${BATS_TEST_TMPDIR}/typo.json"
+    printf '%s\n' '{"environment":"dockr"}' > "${config}"
+
+    run _set_workdir_from_config "/worktree" "${config}" "dockr"
+    assert_failure 1
+    assert_output --partial "${config} declares environment \"dockr\", which this server does not recognize."
+    assert_output --partial "Known environments: native, docker, docker-compose, vagrant, ddev."
 }
 
 @test "_set_workdir_from_config: refuses an empty environment, naming the field" {
@@ -934,4 +1041,43 @@ _assert_configured_mapping_refuses() {
     run wrap_command "composer install"
     assert_success
     assert_output "ddev composer install"
+}
+
+# ddev's own default directory is /var/www/html, so a configured ddev.workdir
+# other than that reaches the container only when it is named. Bound through
+# _set_workdir_from_config, the way the server binds it at startup.
+_bind_ddev_workdir() {
+    LINT_CONFIG_FILE="${BATS_TEST_TMPDIR}/.mcp-php-tooling.json"
+    printf '{"environment":"ddev","ddev":{"workdir":"%s"}}\n' "$1" > "${LINT_CONFIG_FILE}"
+    LINT_ENV="ddev"
+    PROJECT_ROOT="${BATS_TEST_TMPDIR}/project"
+    WORKTREE_EFFECTIVE_ROOT="${PROJECT_ROOT}"
+    _set_workdir_from_config "${PROJECT_ROOT}" "${LINT_CONFIG_FILE}" ddev
+}
+
+@test "wrap_command ddev: an unscoped command at the launch root names a non-default ddev.workdir" {
+    _bind_ddev_workdir "/var/www/html/shopware"
+    run wrap_command "vendor/bin/phpunit"
+    assert_success
+    assert_output 'ddev exec -d "/var/www/html/shopware" vendor/bin/phpunit'
+}
+
+@test "wrap_command ddev: an unscoped composer call at the launch root names a non-default ddev.workdir" {
+    _bind_ddev_workdir "/var/www/html/shopware"
+    run wrap_command "composer install"
+    assert_success
+    assert_output 'ddev exec -d "/var/www/html/shopware" composer install'
+}
+
+# A server with the worktree module answers a launch-root call from the workdir
+# it bound at startup; an edit of the launch configuration mid-session is inert.
+@test "wrap_command ddev: a launch-root call names the bound non-default ddev.workdir after the file changed" {
+    _bind_ddev_workdir "/var/www/html/shopware"
+    WORKTREE_LAUNCH_CONFIG_FILE="${LINT_CONFIG_FILE}"
+    WORKTREE_SELECTED_CONFIG_FILE="${LINT_CONFIG_FILE}"
+    printf '%s\n' '{"environment":"ddev"}' > "${LINT_CONFIG_FILE}"
+
+    run wrap_command "composer install"
+    assert_success
+    assert_output 'ddev exec -d "/var/www/html/shopware" composer install'
 }
