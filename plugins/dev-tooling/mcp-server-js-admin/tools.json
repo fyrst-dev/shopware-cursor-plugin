@@ -190,7 +190,7 @@
           "coverage": {
             "type": "boolean",
             "default": false,
-            "description": "Generate code coverage report"
+            "description": "Append --coverage. The core Administration collects coverage on every run regardless: \"unit\" passes --ci, and its Jest config turns coverage on under --ci."
           },
           "updateSnapshots": {
             "type": "boolean",
@@ -200,7 +200,7 @@
           "ci": {
             "type": "boolean",
             "default": false,
-            "description": "Run Jest in CI mode (--ci). Defaults to false. Turning it on makes the Jest config collect coverage regardless of the \"coverage\" argument and swaps the reporters for jest-silent-reporter plus jest-junit, which suppresses the per-test lines and the summary. Leave it off unless you need CI-identical behavior."
+            "description": "Append --ci to the run. The core Administration's npm script \"unit\" already passes --ci, so a run under scope \"shopware\" is in CI mode either way. A plugin scope's own \"unit\" script runs in CI mode when it passes --ci itself or when this is set."
           },
           "scope": {
             "type": "string",
@@ -240,7 +240,7 @@
           },
           "scope": {
             "type": "string",
-            "description": "Scope name from .mcp-js-tooling.json. Omit to use the configured default_scope. Pass \"shopware\" to force project-root behavior."
+            "description": "Scope name from .mcp-js-tooling.json. Omit, or pass \"shopware\", to run in the core Administration package: this tool ignores default_scope."
           }
         },
         "additionalProperties": false
@@ -258,7 +258,7 @@
           },
           "scope": {
             "type": "string",
-            "description": "Scope name from .mcp-js-tooling.json. Omit to use the configured default_scope. Pass \"shopware\" to force project-root behavior."
+            "description": "Scope name from .mcp-js-tooling.json. Omit, or pass \"shopware\", to run in the core Administration package: this tool ignores default_scope."
           }
         },
         "additionalProperties": false
@@ -276,7 +276,7 @@
           },
           "scope": {
             "type": "string",
-            "description": "Scope name from .mcp-js-tooling.json. Omit to use the configured default_scope. Pass \"shopware\" to force project-root behavior."
+            "description": "Scope name from .mcp-js-tooling.json. Omit, or pass \"shopware\", to run in the core Administration package: this tool ignores default_scope."
           }
         },
         "additionalProperties": false
@@ -303,7 +303,7 @@
           },
           "scope": {
             "type": "string",
-            "description": "Scope name from .mcp-js-tooling.json. Omit to use the configured default_scope. Pass \"shopware\" to force project-root behavior."
+            "description": "Scope name from .mcp-js-tooling.json. Omit, or pass \"shopware\", to run in the core Administration package: this tool ignores default_scope."
           }
         },
         "additionalProperties": false

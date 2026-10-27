@@ -23,9 +23,9 @@
 # and with an explicit --config the base path is the working directory. It
 # still has to start through npm in the package directory: ../.. holds no
 # package.json, so `npm exec` started there would resolve its binary from
-# another directory, and wrap_npm_command's ddev branch hands a command to
-# `ddev npm` only when it starts with npm; the host shell splits any other
-# compound command at its first `&&`, so only the cd would reach the container.
+# another directory, and wrap_npm_command's ddev branch prefixes the command
+# with `ddev exec -d "<workdir>"`, so the host shell splits a bare compound
+# command at its first `&&` and only the cd would reach the container.
 # `npm exec -c` runs its string through a shell in the package directory with
 # the package's node_modules/.bin first on PATH, and the string does the cd.
 
@@ -37,6 +37,9 @@ STOREFRONT_ESLINT_FLAGS="--no-error-on-unmatched-pattern --report-unused-disable
 STOREFRONT_ESLINT_COMPONENTS_CONFIG="./app/storefront/eslint.config.js"
 STOREFRONT_ESLINT_APP_BASE="."
 STOREFRONT_ESLINT_COMPONENTS_BASE="../.."
+# The package directory an app-tree path is rebased onto when no scope is
+# active; under a scope it is the scope cwd instead.
+STOREFRONT_ESLINT_PACKAGE_MARKER="app/storefront/"
 # Extensions the Storefront ESLint config can match. A path that resolves to no
 # file with one of them lints nothing and still exits 0.
 STOREFRONT_ESLINT_EXTENSIONS="js ts mjs cjs jsx tsx vue json"
@@ -55,16 +58,6 @@ _eslint_is_components_path() {
 _eslint_rebase_components_path() {
     local path="$1"
     printf '%s\n' "views/components${path#*views/components}"
-}
-
-# Rebase an app-tree path onto the app/storefront package directory.
-# Args: $1 = caller-supplied path
-_eslint_rebase_app_path() {
-    local path="$1"
-    if [[ "${path}" == *"app/storefront/"* ]]; then
-        path="${path#*app/storefront/}"
-    fi
-    printf '%s\n' "${path}"
 }
 
 # Run one tree's ESLint invocation. Reached only when the caller supplied
@@ -150,7 +143,7 @@ _eslint_dispatch() {
         # Running bare anyway would silently substitute the package script's own
         # configuration for the scope-selected one.
         if [[ -n "${scoped_config}" ]]; then
-            printf '%s\n' "Refusing to run: scope \"${SCOPE_NAME}\" selects the ESLint config \"${scoped_config}\", but a run without paths can only execute \"npm run ${aggregate}\" bare, which would apply the package script's own config instead. \"${aggregate}\" chains two ESLint calls, so the config cannot be appended to it either. Pass paths so the run executes ESLint on them directly, or call with scope \"shopware\"."
+            printf '%s\n' "Refusing to run: scope \"${SCOPE_NAME}\" selects the ESLint config \"${scoped_config}\", but a run without paths can only execute \"npm run ${aggregate}\" bare, which would apply the package script's own config instead. \"${aggregate}\" chains two ESLint calls, so the config cannot be appended to it either. Pass paths so the run executes ESLint on them directly."
             return 1
         fi
         local bare_cmd="npm run ${aggregate}"
@@ -167,7 +160,7 @@ _eslint_dispatch() {
         if _eslint_is_components_path "${p}"; then
             component_paths+=("$(_eslint_rebase_components_path "${p}")")
         else
-            app_paths+=("$(_eslint_rebase_app_path "${p}")")
+            app_paths+=("$(js_rebase_package_path "${STOREFRONT_ESLINT_PACKAGE_MARKER}" "${p}")")
         fi
     done < <(printf '%s\n' "${paths_json}" | jq -r '.[]')
 
@@ -239,7 +232,9 @@ tool_eslint_check() {
         stylish|*) flags+=("-f" "stylish") ;;
     esac
 
-    [[ -n "${scoped_config}" ]] && flags+=("--config" "${scoped_config}")
+    local config_flag
+    scope_config_flag_or_refuse config_flag "ESLint configuration" "${scoped_config}" || return 1
+    [[ -n "${config_flag}" ]] && flags+=("${config_flag}")
 
     _eslint_dispatch "${args}" "lint:js" "${flags[*]}" "${scoped_config}" "eslint_check"
 }
@@ -264,7 +259,9 @@ tool_eslint_fix() {
     scope_tool_field_or_refuse scoped_config eslint config || return 1
 
     local -a flags=("--fix")
-    [[ -n "${scoped_config}" ]] && flags+=("--config" "${scoped_config}")
+    local config_flag
+    scope_config_flag_or_refuse config_flag "ESLint configuration" "${scoped_config}" || return 1
+    [[ -n "${config_flag}" ]] && flags+=("${config_flag}")
 
     _eslint_dispatch "${args}" "lint:js:fix" "${flags[*]}" "${scoped_config}" "eslint_fix"
 }

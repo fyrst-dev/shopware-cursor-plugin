@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Path-scoped runs of a JS package's own linter binary, for the JS MCP servers:
-# Admin Prettier and Stylelint, Storefront Stylelint, and the Storefront ESLint
-# binary probe.
+# Admin Prettier and Stylelint, Storefront Stylelint, and the Admin and
+# Storefront ESLint binary probe and package-path rebase. Also the Stylelint
+# check that refuses a second config on an aggregate script.
 #
 # Owned by dev-tooling. Not templated — do not add it to the mapping in
 # .claude/rules/template-sync.md.
@@ -11,9 +12,95 @@
 # body's own targets, so a path appended to the aggregate widens the run to
 # those targets and cannot narrow it.
 #
-# Requires: exec_npm_command(), shell_quote_arg(), assert_paths_lintable() and
-#           _env_targets_worktree() from environment.sh, npm_script_body()
-#           for the Stylelint config check, LINT_ENV, jq.
+# Requires: exec_npm_command(), shell_quote_arg() and assert_paths_lintable()
+#           from environment.sh, LINT_ENV, SCOPE_NAME, SCOPE_CWD, jq.
+
+# Rebase a caller path onto the package directory the linter runs in. Unscoped,
+# the package lies below the marker, so the path is stripped through it. Under a
+# scope the package is the scope cwd: a leading "./" comes off the path, then a
+# leading "<cwd>/" is stripped, otherwise the first "/<cwd>/" of an absolute
+# path. A path naming the cwd itself — relative, or absolute ending in "/<cwd>"
+# — is the package, and an empty result prints as ".". A path carrying no cwd
+# prefix passes through.
+# Globals: SCOPE_CWD (read)
+# Args: $1 = package marker including its trailing slash, $2 = caller path
+# Stdout: the path relative to the package directory, or "." for the package itself
+js_rebase_package_path() {
+    local marker="$1"
+    local path="$2"
+
+    if [[ -z "${SCOPE_CWD:-}" ]]; then
+        if [[ "${path}" == *"${marker}"* ]]; then
+            path="${path#*"${marker}"}"
+        fi
+        [[ -z "${path}" ]] && path="."
+        printf '%s\n' "${path}"
+        return 0
+    fi
+
+    local cwd="${SCOPE_CWD#./}"
+    while [[ "${cwd}" == */ ]]; do
+        cwd="${cwd%/}"
+    done
+    if [[ -z "${cwd}" ]]; then
+        printf '%s\n' "${path}"
+        return 0
+    fi
+
+    path="${path#./}"
+    if [[ "${path}" == "${cwd}/"* ]]; then
+        path="${path#"${cwd}/"}"
+    elif [[ "${path}" == "${cwd}" ]]; then
+        path=""
+    elif [[ "${path}" == /* && "${path}" == *"/${cwd}" ]]; then
+        path=""
+    elif [[ "${path}" == /* && "${path}" == *"/${cwd}/"* ]]; then
+        path="${path#*"/${cwd}/"}"
+    fi
+    [[ -z "${path}" ]] && path="."
+    printf '%s\n' "${path}"
+}
+
+# Refuse to append a scope config to an aggregate script whose own linter
+# command already passes one: the linter accepts its config option only once.
+# Args: $1 = tool name, $2 = linter name, $3 = binary, $4 = aggregate npm
+#       script, $5 = its body, $6 = scope-configured config (may be empty)
+# Stdout: the refusal
+# Returns: 0 when no scope config is set or the body passes no config, 1 otherwise
+js_refuse_second_config() {
+    local tool_name="$1"
+    local linter="$2"
+    local binary="$3"
+    local aggregate="$4"
+    local body="$5"
+    local scoped_config="$6"
+
+    if [[ -z "${scoped_config}" ]]; then
+        return 0
+    fi
+
+    local -a words=()
+    read -r -a words <<< "${body}"
+    local word in_command=0
+    for word in "${words[@]+"${words[@]}"}"; do
+        if [[ "${in_command}" -eq 0 ]]; then
+            if [[ "${word}" == "${binary}" || "${word}" == */"${binary}" ]]; then
+                in_command=1
+            fi
+            continue
+        fi
+        case "${word}" in
+            "&&")
+                in_command=0
+                ;;
+            --config|--config=*|-c|-c=*)
+                printf '%s\n' "Refusing to run ${tool_name}: scope \"${SCOPE_NAME}\" selects the ${linter} config \"${scoped_config}\", but npm script \"${aggregate}\" already passes its own config to ${binary}: \"${body}\". ${linter} accepts its config option only once, so the appended one cannot apply. Pass paths so the run executes ${linter} on them directly."
+                return 1
+                ;;
+        esac
+    done
+    return 0
+}
 
 # True when the path is a glob pattern the linter expands itself. The existence
 # probe cannot resolve a glob, so a glob skips it.
@@ -126,24 +213,39 @@ js_directory_pattern() {
     printf '%s\n' "${path}/$2"
 }
 
-# Refuse glob patterns and directories under ddev on a worktree: the command
+# Refuse glob patterns and directories under ddev: the command
 # reaches `ddev exec`, which re-parses it in the container's bash without
-# quoting a value that holds no space, quote or "#", so that bash would expand
-# the pattern itself, without globstar, before the linter sees it.
+# quoting a value that holds no space, tab or "#", so that bash
+# would expand the pattern itself, without globstar, before the linter sees it.
+# A value holding one of those characters is quoted again and reaches the
+# linter intact. A double quote never reaches here: parse_paths_json already
+# refuses it under ddev.
 # Args: $1 = tool name, $2 = linter name for the refusal,
 #       $3.. = the caller's glob patterns and directories
 # Stdout: the refusal
-# Returns: 0 when no such path is given or the call runs elsewhere, 1 otherwise
-js_assert_no_pattern_under_ddev_worktree() {
+# Returns: 0 when every such path is re-quoted or the environment is not ddev,
+#          1 otherwise
+js_assert_no_pattern_under_ddev() {
     local tool_name="$1"
     local linter="$2"
     shift 2
 
-    if [[ $# -eq 0 || "${LINT_ENV:-}" != "ddev" ]] || ! _env_targets_worktree; then
+    if [[ "${LINT_ENV:-}" != "ddev" ]]; then
         return 0
     fi
 
-    printf '%s\n' "Refusing to run ${tool_name} with paths: under ddev on a worktree these paths would reach ${linter} as glob patterns the container shell expands first: $*. Pass file paths instead."
+    local -a expanded=()
+    local p
+    for p in "$@"; do
+        if [[ "${p}" != *[\ $'\t'\#]* ]]; then
+            expanded+=("${p}")
+        fi
+    done
+    if [[ ${#expanded[@]} -eq 0 ]]; then
+        return 0
+    fi
+
+    printf '%s\n' "Refusing to run ${tool_name} with paths: under ddev these paths would reach ${linter} as glob patterns the container shell expands first: ${expanded[*]}. Pass file paths instead."
     return 1
 }
 
@@ -203,7 +305,7 @@ js_path_scoped_targets() {
             patterns+=("${p}")
         fi
     done
-    js_assert_no_pattern_under_ddev_worktree "${tool_name}" "${linter}" \
+    js_assert_no_pattern_under_ddev "${tool_name}" "${linter}" \
         "${patterns[@]+"${patterns[@]}"}" "${directories[@]+"${directories[@]}"}" || return 1
 
     local -a quoted=()
@@ -220,97 +322,4 @@ js_path_scoped_targets() {
     done
 
     printf '%s\n' "${quoted[*]}"
-}
-
-# True when a command in an npm script body runs Stylelint with a config flag
-# of its own: --config, --config=, -c or -c=, counted only after the stylelint
-# token of the same command, so another program's -c is not taken for one.
-# Stylelint refuses a second config flag. The Storefront's Stylelint 16 accepts
-# all four; the Administration's Stylelint 14 rejects -c and -c=, so a script
-# using either fails on its own, and counting them refuses it earlier with a
-# clearer message.
-# Args: $1 = script body
-# Returns: 0 when a Stylelint command in the body passes a config, 1 otherwise
-js_stylelint_body_passes_config() {
-    local body="$1"
-
-    body="${body//&&/;}"
-    body="${body//||/;}"
-    body="${body//|/;}"
-
-    local -a segments=()
-    IFS=';' read -r -a segments <<< "${body}"
-
-    local segment args
-    for segment in "${segments[@]+"${segments[@]}"}"; do
-        segment=" ${segment} "
-        case "${segment}" in
-            *" stylelint "*) args=" ${segment#* stylelint }" ;;
-            *"/stylelint "*) args=" ${segment#*/stylelint }" ;;
-            *) continue ;;
-        esac
-        case "${args}" in
-            *" --config "*|*" --config="*|*" -c "*|*" -c="*) return 0 ;;
-        esac
-    done
-
-    return 1
-}
-
-# True when an npm script hands Stylelint a config of its own, directly or
-# through an `npm run` of another script in its body, so a scope config cannot
-# be appended to it.
-# Args: $1 = npm script name, $2 = how many nested `npm run` levels to follow
-# Stdout: a failure message, when a body cannot be read or the chain is deeper
-# Returns: 0 = passes a config, 1 = passes none, 2 = a body could not be read,
-#          or the chain runs deeper than $2 levels
-js_stylelint_script_passes_config() {
-    local script="$1"
-    local depth="$2"
-
-    local body
-    local body_code=0
-    body=$(npm_script_body "${script}") || body_code=$?
-    if [[ "${body_code}" -eq 1 ]]; then
-        printf '%s\n' "npm script \"${script}\" is not defined in package.json."
-        return 2
-    fi
-    if [[ "${body_code}" -ne 0 ]]; then
-        printf '%s\n' "Could not read npm script \"${script}\" from package.json to check it for its own Stylelint config; see the server log for the failed probe."
-        return 2
-    fi
-
-    if js_stylelint_body_passes_config "${body}"; then
-        return 0
-    fi
-
-    local padded=" ${body} "
-
-    if [[ "${padded}" != *" npm run "* ]]; then
-        return 1
-    fi
-
-    # An unread chain may pass a config, so it is refused rather than taken as
-    # passing none.
-    if [[ "${depth}" -le 0 ]]; then
-        printf '%s\n' "npm script \"${script}\" runs further npm scripts nested deeper than this tool follows, so it cannot be checked for its own Stylelint config."
-        return 2
-    fi
-
-    local rest="${padded}"
-    local inner nested_code
-    while [[ "${rest}" == *" npm run "* ]]; do
-        rest="${rest#* npm run }"
-        while [[ "${rest}" == -* ]]; do
-            rest="${rest#* }"
-        done
-        inner="${rest%% *}"
-        nested_code=0
-        js_stylelint_script_passes_config "${inner}" "$((depth - 1))" || nested_code=$?
-        if [[ "${nested_code}" -ne 1 ]]; then
-            return "${nested_code}"
-        fi
-    done
-
-    return 1
 }

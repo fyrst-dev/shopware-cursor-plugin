@@ -30,8 +30,7 @@ ADMIN_STYLELINT_DIRECTORY_GLOB="**/*.scss"
 #       $4 = pre-path flag string used ONLY on the path-scoped route, for flags
 #            the aggregate script already carries in its own body (may be empty),
 #       $5 = tool arguments JSON,
-#       $6 = scope-configured Stylelint config, already part of $3 (empty
-#            when the scope configures none)
+#       $6 = scope-configured Stylelint config (may be empty)
 # Stdout: linter output, or the failure message
 _stylelint_dispatch_admin() {
     local aggregate="$1"
@@ -69,19 +68,8 @@ _stylelint_dispatch_admin() {
             return 1
         fi
 
-        if [[ -n "${scoped_config}" ]]; then
-            local config_check
-            local config_code=0
-            config_check=$(js_stylelint_script_passes_config "${aggregate}" 3) || config_code=$?
-            if [[ "${config_code}" -eq 0 ]]; then
-                printf '%s\n' "Refusing to run: scope \"${SCOPE_NAME}\" selects the Stylelint config \"${scoped_config}\", but \"npm run ${aggregate}\" already passes a config of its own, and Stylelint refuses a second --config. Pass paths so the run uses the scope config alone, or call with scope \"shopware\"."
-                return 1
-            fi
-            if [[ "${config_code}" -ne 1 ]]; then
-                printf '%s\n' "${config_check}"
-                return 1
-            fi
-        fi
+        js_refuse_second_config "${tool_name}" "Stylelint" "${ADMIN_STYLELINT_BINARY}" \
+            "${aggregate}" "${body}" "${scoped_config}" || return 1
 
         local aggregate_cmd="npm run ${aggregate} -- ${flag_string}"
         log "INFO" "Running Stylelint (admin, ${aggregate}): ${aggregate_cmd}"
@@ -142,7 +130,9 @@ tool_stylelint_check() {
         string|*) flags+=("-f" "string") ;;
     esac
 
-    [[ -n "${scoped_config}" ]] && flags+=("--config" "${scoped_config}")
+    local config_flag
+    scope_config_flag_or_refuse config_flag "Stylelint configuration" "${scoped_config}" || return 1
+    [[ -n "${config_flag}" ]] && flags+=("${config_flag}")
 
     _stylelint_dispatch_admin "lint:scss" "stylelint_check" "${flags[*]}" "" "${args}" "${scoped_config}"
 }
@@ -167,7 +157,9 @@ tool_stylelint_fix() {
     scope_tool_field_or_refuse scoped_config stylelint config || return 1
 
     local -a flags=()
-    [[ -n "${scoped_config}" ]] && flags+=("--config" "${scoped_config}")
+    local config_flag
+    scope_config_flag_or_refuse config_flag "Stylelint configuration" "${scoped_config}" || return 1
+    [[ -n "${config_flag}" ]] && flags+=("${config_flag}")
 
     # Expanded through a guard: an empty array under `set -u` is not portable
     # to every bash the servers may run under, and empty is the common case
