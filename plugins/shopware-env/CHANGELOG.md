@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-10-27
+
+### Changed
+- **The hook's block messages name the tool and its server.** `block_tool()` takes the server name and the tool names. A blocked `composer install` reads ``Use `install_dependencies` on the `lifecycle-tooling` MCP server instead!``.
+- **The hook resolves the project from `CURSOR_PROJECT_DIR`, then `workspace_roots` or the hook event's `cwd`.** Config lookup still prefers `.cursor/.mcp-php-tooling.json`, then `.mcp-php-tooling.json`.
+
+### Fixed
+- **A config file that is present but not a JSON object refuses startup.** `lifecycle-tooling` exits instead of running every tool against the environment taken from its arguments. A relative `MCP_PHP_TOOLING_CONFIG` is resolved against `PROJECT_ROOT`. Without a config, `docker` and `docker-compose` calls require `docker_service`, and the container's default workdir is set per environment.
+- **Shared `config.sh`, `environment.sh`, and `docker-compose.sh` match the dev-tooling 5.0.1 templates.** The copies stay byte-identical with `templates/mcp-shared/`. No lifecycle tool gains a new parameter.
+
 ## [2.1.0] - 2026-09-19
 
 ### Changed

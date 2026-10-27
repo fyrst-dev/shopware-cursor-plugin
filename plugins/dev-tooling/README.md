@@ -82,13 +82,15 @@ The [full reference](./docs/reference.md) has parameter tables and examples for 
 
 ## 🌳 Worktree Support
 
-Every tool except `cwd`, on all three servers, takes an optional `project_root` to run one call against a linked git worktree of the root the server was launched in. `set_project_root` and `cwd` manage that state rather than targeting one call with it — `set_project_root` takes a `project_root` and sticks it for every later call on that server process (each server is a separate process holding its own sticky value), and omitting the argument clears it; `cwd` takes no parameters and reports what a server currently resolves to.
+Every tool except `cwd`, on all three servers, takes an optional `project_root` to run one call against a linked git worktree of the server's project root. `set_project_root` and `cwd` manage that state rather than targeting one call with it — `set_project_root` takes a `project_root` and sticks it for every later call on that server process (each server is a separate process holding its own sticky value), and omitting the argument, or naming the launch root itself, clears it; `cwd` takes no parameters and reports what a server currently resolves to.
+
+A server started in its own plugin directory has no project root yet, so it has no launch root to fall back on and every tool but `set_project_root` and `cwd` refuses until one is bound. There the first `set_project_root` call with a path binds the server: it discovers the configuration, derives the environment, and records the root every later call enters, so from then on the server behaves as one started in that root — and later calls may stick a linked git worktree of it. Omitting the argument while unbound is refused rather than clearing anything. Export `PROJECT_ROOT` with the project path before starting the server to bind at startup.
 
 > [!NOTE]
 > Worktree targeting works in every environment. Under `docker`, `docker-compose`, `vagrant`, and `ddev` the worktree has to sit inside the launch project root — that root is the only tree the container or VM mounts — so a worktree created elsewhere on the host is refused. An in-root worktree is reached at its own position below the environment's working directory: `docker.workdir`, `vagrant.workdir`, or `ddev.workdir`, and for `docker-compose` a configured `docker-compose.workdir`, or else the destination of the longest matching bind mount.
 
 > [!IMPORTANT]
-> A worktree's `.git` file has to carry a relative `gitdir` pointer. `git worktree add` writes an absolute one unless the repository sets `worktree.useRelativePaths`, and an absolute pointer names a host path that does not exist inside a container — so it is refused in every environment, `native` included. Relink an existing worktree with `git -c worktree.useRelativePaths=true worktree repair <worktree-path>` (needs git 2.48 or newer), or create one with `git worktree add --relative-paths`. Setting `git config worktree.useRelativePaths true` once in the repository makes every later worktree carry relative linkage from the start.
+> A worktree's `.git` file has to carry a relative `gitdir` pointer under `docker`, `docker-compose`, `vagrant`, and `ddev`. `git worktree add` writes an absolute one unless the repository sets `worktree.useRelativePaths`, and an absolute pointer names a host path that does not exist inside a container, so those environments refuse it. `native` accepts an absolute pointer, because the command runs on the host where the pointer resolves. Relink an existing worktree with `git -c worktree.useRelativePaths=true worktree repair <worktree-path>` (needs git 2.48 or newer), or create one with `git worktree add --relative-paths`. Setting `git config worktree.useRelativePaths true` once in the repository makes every later worktree carry relative linkage from the start.
 
 A fresh worktree holds tracked files only, so the launch tree's `vendor/` and `node_modules` are not in it and every composer- or npm-backed tool refuses until they exist. Each server's `worktree_prepare` installs its own toolchain's dependencies in the target root — `composer install` on `php-tooling`, `npm ci` in the package directory on the JS servers — through the configured environment, which under a container runs the install inside the container at the mapped path. Re-run it after the worktree's `composer.json`/`composer.lock` or `package-lock.json` changes; the dependency check only tests that the install directory exists.
 
@@ -134,8 +136,9 @@ Use scopes when developing a Shopware plugin inside `custom/plugins/<name>/`. A 
 
 ### Calling tools
 
-- Omit `scope` → uses `default_scope` (or project-root behavior).
-- Pass `scope: "swag-commercial"` → overrides the default for one call.
+- Omit `scope` → uses `default_scope` (or project-root behavior) for scope-aware PHP tools, JS lint/format tools, `tsc_check`, `jest_run`, and JS `worktree_prepare`.
+- Omit `scope` on `lint_all`, `lint_twig`, `unit_setup`, `vite_build`, `webpack_build`, or `vitest_run` → ignores `default_scope` and uses the core package. `ludtwig_check` and `ludtwig_fix` take no `scope` at all and always use the core package.
+- Pass `scope: "swag-commercial"` → selects that plugin for tools that support plugin scopes; `vitest_run` refuses plugin scopes.
 - Pass `scope: "shopware"` → forces project-root behavior.
 
 Run the `setting-up` skill to let the agent probe the plugin and write the scope for you.

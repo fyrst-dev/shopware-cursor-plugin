@@ -30,14 +30,17 @@ plugins/dev-tooling/
 │       ├── check-phpstan-baseline.sh   # postToolUse hook: warns when analyzed paths appear in phpstan-baseline.neon
 │       ├── worktree-directives.sh      # beforeShellExecution hook on git worktree add/remove: set_project_root reminder; on enter also the repair command for an absolute gitdir pointer when the path already exists
 │       └── lib/
-│           └── common.sh               # Shared: parse_hook_input(), load_mcp_config(), block_tool()
+│           ├── common.sh               # Shared (template-synced from templates/hooks-shared/common.sh): parse_hook_input(), load_mcp_config(), resolve_project_dir(), block_tool()
+│           └── js_binary.sh            # Shared binary-run matcher of the two JS hooks (dev-tooling-owned, not templated)
 │
 ├── shared/                             # SHARED FRAMEWORK (language-agnostic)
 │   ├── mcpserver_core.sh              # JSON-RPC 2.0 protocol handler + validate_tool_arguments()
 │   ├── config.sh                      # Config discovery & merging (parameterized via CONFIG_PREFIX)
+│   ├── launch.sh                      # Launch mode: bound, or unbound when the host started the server in this plugin's own directory (dev-tooling-owned, not templated)
 │   ├── environment.sh                 # Environment detection, PHP & JS command wrapping, argument quoting, path guards, environment-side path mapping, noise filtering
 │   ├── worktree.sh                    # Per-call root resolution and worktree validation: worktree_enter(), set_project_root, cwd (dev-tooling-owned, not templated)
 │   ├── server_run.sh                  # Shared server tail: run_mcp_server() call and why it is not isolated in a subshell (dev-tooling-owned, not templated)
+│   ├── js_paths.sh                    # JS path-scoped runs: local-binary probe, second-config check, package-path rebase, directory patterns, ddev glob/directory refusal (dev-tooling-owned, not templated)
 │   ├── scope.sh                       # Scope resolution: resolve_scope(), scope_get_tool_field()
 │   ├── docker-compose.sh              # Docker Compose environment: call-time resolution of container/workdir
 │   └── mcp-js-tooling.schema.json     # JSON Schema for .mcp-js-tooling.json (shared by JS servers)
@@ -75,7 +78,7 @@ plugins/dev-tooling/
     ├── config.json                    # Server metadata (name="js-storefront-tooling")
     ├── tools.json                     # ESLint, Stylelint, Jest, Vitest, ludtwig, Webpack tools
     └── lib/
-        ├── eslint.sh                  # tool_eslint_check(), tool_eslint_fix() — routes paths to eslint:app / eslint:components
+        ├── eslint.sh                  # tool_eslint_check(), tool_eslint_fix() — routes paths to the app tree / the components tree
         ├── stylelint.sh               # tool_stylelint_check(), tool_stylelint_fix()
         ├── jest.sh                    # tool_jest_run() — app/storefront package suite only
         ├── vitest.sh                  # tool_vitest_run() — views/components component suite
@@ -132,6 +135,7 @@ All MCP servers source shared framework files:
 ```bash
 source "${SHARED_DIR}/mcpserver_core.sh"  # JSON-RPC protocol
 source "${SHARED_DIR}/config.sh"           # Config discovery
+source "${SHARED_DIR}/launch.sh"           # Launch mode: bound, or unbound in the plugin directory
 source "${SHARED_DIR}/environment.sh"      # Command execution
 ```
 
@@ -178,15 +182,14 @@ Tools in `tools.json` map to bash functions with `tool_` prefix:
 # Admin/Storefront servers - hardcoded npm script names from Shopware package.json.
 # Two routes per tool, selected by whether the caller supplied paths: appending
 # to the aggregate script only ever widens it (npm appends `--` args to the end
-# of the whole script body), so a path-scoped call is routed at a separate
-# target-less base script instead, and refuses when that script is unusable.
+# of the whole script body), so a path-scoped call runs without it.
 tool_eslint_check() {
     local args="$1"
     # No paths: aggregate script's own targets stay authoritative.
     local cmd="npm run lint -- ..."  # Admin uses "lint", Storefront uses "lint:js"
-    # Paths supplied: routed at a target-less base script instead, so the
-    # given paths are the ONLY targets (Admin: "lint:debugging"; Storefront:
-    # "eslint:app" / "eslint:components", picked per path).
+    # Paths supplied: the given paths are the ONLY targets. Both ESLint tools
+    # run the package's own binary through `npm exec --no`.
+    # docs/reference.md lists each tool's route and refusals.
     exec_npm_command "${cmd}"
 }
 ```
@@ -210,7 +213,7 @@ Both handle environment-specific execution (native/docker/docker-compose/vagrant
 | Add blocked PHP command | `hooks/scripts/check-php-tools.sh` | - | `block_tool()`, grep pattern |
 | Add blocked Admin JS command | `hooks/scripts/check-js-admin-tools.sh` | - | `block_tool()`, `is_admin_context()` |
 | Add blocked Storefront JS command | `hooks/scripts/check-js-storefront-tools.sh` | - | `block_tool()`, `is_storefront_context()` |
-| Modify shared hook logic | `hooks/scripts/lib/common.sh` | - | `parse_hook_input()`, `load_mcp_config()`, `block_tool()` |
+| Modify shared hook logic | `templates/hooks-shared/common.sh` (edit template, sync per `.cursor/rules/template-sync.mdc`) | - | `parse_hook_input()`, `load_mcp_config()`, `resolve_project_dir()`, `block_tool(server, description, tool...)` |
 | Disable hook enforcement | `.mcp-*-tooling.json` | - | `enforce_mcp_tools: false` |
 | Adjust hook timeout | `hooks/hooks.json` | - | `timeout` field (default: 5s) |
 | Add config location | `templates/mcp-shared/config.sh` (edit template, sync per `.cursor/rules/template-sync.mdc`) | - | `CONFIG_LOCATIONS` array |
@@ -220,6 +223,8 @@ Both handle environment-specific execution (native/docker/docker-compose/vagrant
 | Modify protocol | upstream `shopwareLabs/bash-mcp-sdk` (release pinned in `.mcp-sdk.lock`; never edit `shared/mcpserver_core.sh` in place) | - | `process_request()`, `handle_*()` |
 | Update tool schemas | `mcp-server-*/tools.json` | - | JSON Schema Draft 7 |
 | Register new server | `mcp.json` | - | `mcpServers` object |
+| Change launch or bind behavior | `shared/launch.sh` | `shared/worktree.sh` (`worktree_launch_hydrate`, `_worktree_launch_bind`) | `LAUNCH_MODE`, the `launch` record in the state file |
+| Change JS path rebasing | `shared/js_paths.sh` | `mcp-server-js-*/lib/` | path-scoped runs through the package binary |
 
 ## ✏️ When to Modify What
 
@@ -285,8 +290,8 @@ This plugin's own suites are in `plugin-tests/dev-tooling/`:
 | `mcp_tool_console.bats`          | Console tool command construction                                                   |
 | `mcp_tool_ecs.bats`              | ECS tool command construction                                                       |
 | `mcp_tool_rector.bats`           | Rector tool command construction                                                    |
-| `mcp_tool_js_admin.bats`         | Admin JS MCP tool command construction                                              |
-| `mcp_tool_js_storefront.bats`    | Storefront JS MCP tool command construction (ESLint routing, Jest, Vitest, ludtwig) |
+| `mcp_tool_js_admin.bats`         | Admin JS tool commands; Stylelint and Prettier executed through the env wrappers    |
+| `mcp_tool_js_storefront.bats`    | Storefront JS tool commands; ESLint and Stylelint executed through the env wrappers |
 | `mcp_tool_phpstan.bats`          | PHPStan tool command construction                                                   |
 | `mcp_tool_phpunit.bats`          | PHPUnit tool command construction (coverage, config, drivers)                       |
 | `mcp_tool_phpunit_coverage.bats` | PHPUnit coverage gap parsing (clover XML, filtering, ranges)                        |
@@ -301,10 +306,20 @@ This plugin's own suites are in `plugin-tests/dev-tooling/`:
 | `worktree_php_tools.bats`        | `phpunit_coverage_gaps`: clover paths relative to the mapped workdir, refused read |
 | `worktree_js_tools.bats`         | `project_root` reaching the JS package directory, which the conformance scan does not capture |
 | `worktree_conformance.bats`      | Every enumerated `tool_*` function runs in the named worktree and runs nothing against a refused one, with the enumeration reconciled against `tools.json` |
+Three non-suite entries sit alongside them:
 
+- `test_helper/common_setup.bash`: shared helpers.
+  - `setup_config()` and `setup()`.
+  - `setup_php_mcp_env()`, which stubs `log()` and `exec_command()` before sourcing a tool library.
+  - The worktree git fixtures `worktree_gitdir_relative()` and `_absolute_path_relative_to()`.
+  - The probe stubs `stub_worktree_probe()` and `worktree_test_guard_probe()`.
+  - `shopware_trunk_script_body()`, which answers an `npm pkg get "scripts.<name>"` probe from the trunk fixtures.
+  - `js_execute_in_env()`, which runs a command a JS tool built through `wrap_npm_command` for one environment against fake `npm`, `docker`, `vagrant` and `ddev` and fake linter binaries.
+- `fixtures/coverage/`: Clover XML samples for `mcp_tool_phpunit_coverage.bats`.
+- `fixtures/shopware-trunk/`: the `scripts` blocks of the Administration and Storefront `package.json` files, copied verbatim from shopware/shopware trunk. The JS tool suites answer script probes from them.
 The modules this plugin consumes from `templates/mcp-shared/` are covered once, for every consuming plugin, in `plugin-tests/mcp-shared/`:
 
-| Test File                     | Coverage                                                                |
+| Test File                     | Coverage                                                                  |
 |-------------------------------|---------------------------------------------------------------------------|
 | `environment.bats`            | Environment wrapping, argument quoting, `parse_paths_json`, path guards   |
 | `docker_compose.bats`         | Docker Compose call-time container/workdir resolution                     |

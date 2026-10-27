@@ -52,6 +52,49 @@ teardown() {
         PROJECT_ROOT DEV_TOOLING_STATE_FILE
 }
 
+_declare_string_bootstrap() {
+    jq '.scopes["plugin-x"].phpstan.bootstrap = "composer install" | .scopes["plugin-x"].rector.bootstrap = "composer install"' \
+        "${LINT_CONFIG_FILE}" > "${LINT_CONFIG_FILE}.new"
+    mv "${LINT_CONFIG_FILE}.new" "${LINT_CONFIG_FILE}"
+}
+
+# The capturing exec_command stub creates CALLS_FILE on its first call, so the
+# file's absence means no command ran at all, bootstrap included.
+assert_calls_file_absent() {
+    if [[ -e "${CALLS_FILE}" ]]; then
+        echo "a command ran:" >&2
+        cat "${CALLS_FILE}" >&2
+        return 1
+    fi
+}
+
+php_tool_refuses_string_section() {
+    local function_name="$1" section="$2"
+    jq --arg section "${section}" '.scopes["plugin-x"][$section] = "invalid"' "${LINT_CONFIG_FILE}" > "${LINT_CONFIG_FILE}.new"
+    mv "${LINT_CONFIG_FILE}.new" "${LINT_CONFIG_FILE}"
+    run "${function_name}" '{"scope":"plugin-x"}'
+    assert_failure
+    assert_output --partial 'Config error: jq could not evaluate'
+    assert_output --partial 'Cannot index string'
+    assert_calls_file_absent
+}
+
+bats_test_function --description "phpstan: a string scope tool section refuses without executing" -- php_tool_refuses_string_section tool_phpstan_analyze phpstan
+bats_test_function --description "rector_check: a string scope tool section refuses without executing" -- php_tool_refuses_string_section tool_rector_check rector
+bats_test_function --description "rector_fix: a string scope tool section refuses without executing" -- php_tool_refuses_string_section tool_rector_fix rector
+bats_test_function --description "ecs_check: a string scope tool section refuses without executing" -- php_tool_refuses_string_section tool_ecs_check style
+bats_test_function --description "ecs_fix: a string scope tool section refuses without executing" -- php_tool_refuses_string_section tool_ecs_fix style
+bats_test_function --description "phpunit: a string scope tool section refuses without executing" -- php_tool_refuses_string_section tool_phpunit_run phpunit
+
+@test "style: an unknown backend refuses before running a command" {
+    jq '.scopes["plugin-x"].style.tool = "other"' "${LINT_CONFIG_FILE}" > "${LINT_CONFIG_FILE}.new"
+    mv "${LINT_CONFIG_FILE}.new" "${LINT_CONFIG_FILE}"
+    run tool_ecs_check '{"scope":"plugin-x"}'
+    assert_failure
+    assert_output --partial "style.tool 'other' must be ecs or php-cs-fixer"
+    assert_calls_file_absent
+}
+
 @test "phpstan scoped: runs bootstrap before phpstan" {
     run tool_phpstan_analyze '{"scope":"plugin-x"}'
     assert_success
@@ -99,6 +142,23 @@ teardown() {
     assert_output --partial "bootstrap failed"
 }
 
+@test "phpstan scoped: a string bootstrap is refused and nothing runs" {
+    _declare_string_bootstrap
+    run tool_phpstan_analyze '{"scope":"plugin-x"}'
+    assert_failure
+    assert_output --partial "scopes.plugin-x.phpstan.bootstrap"
+    assert_output --partial "an array of commands"
+    refute_output --partial "composer phpstan"
+    assert_calls_file_absent
+}
+
+@test "phpstan scoped: a refused argument runs no bootstrap" {
+    run tool_phpstan_analyze '{"scope":"plugin-x","config":"a'"'"'b"}'
+    assert_failure
+    assert_output --partial "single quote"
+    assert_calls_file_absent
+}
+
 @test "rector scoped: runs bootstrap before rector" {
     run tool_rector_check '{"scope":"plugin-x"}'
     assert_success
@@ -117,6 +177,41 @@ teardown() {
     assert_success
     run cat "${CALLS_FILE}"
     refute_line --partial "php tests/phpstan/bootstrap.php"
+}
+
+@test "rector_fix scoped: the scope's own rector-fix script is the one run" {
+    mkdir -p "${BATS_TEST_TMPDIR}/custom/plugins/X"
+    printf '%s\n' '{"scripts":{"rector-fix":"rector process"}}' > "${BATS_TEST_TMPDIR}/custom/plugins/X/composer.json"
+    run tool_rector_fix '{"scope":"plugin-x"}'
+    assert_success
+    run cat "${CALLS_FILE}"
+    assert_line --partial "[scope=custom/plugins/X] composer rector-fix -- "
+}
+
+# The bootstrap runner lives once in shared/scope.sh, which setup sources; this
+# exercises it through rector's call site.
+@test "rector scoped: a string bootstrap is refused and nothing runs" {
+    mkdir -p "${BATS_TEST_TMPDIR}/custom/plugins/X"
+    printf '%s\n' '{"scripts":{"rector-fix":"rector process"}}' > "${BATS_TEST_TMPDIR}/custom/plugins/X/composer.json"
+    _declare_string_bootstrap
+    run tool_rector_fix '{"scope":"plugin-x"}'
+    assert_failure
+    assert_output --partial "scopes.plugin-x.rector.bootstrap"
+    assert_calls_file_absent
+}
+
+@test "rector_check scoped: a refused argument runs no bootstrap" {
+    run tool_rector_check '{"scope":"plugin-x","only":"a'"'"'b"}'
+    assert_failure
+    assert_output --partial "single quote"
+    assert_calls_file_absent
+}
+
+@test "rector_fix scoped: a refused argument runs no bootstrap" {
+    run tool_rector_fix '{"scope":"plugin-x","only":"a'"'"'b"}'
+    assert_failure
+    assert_output --partial "single quote"
+    assert_calls_file_absent
 }
 
 @test "ecs_check scoped: routes to php-cs-fixer with scope style config" {

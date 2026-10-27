@@ -6,31 +6,6 @@ load 'test_helper/common_setup'
 
 PLUGIN_DIR="${REPO_ROOT}/plugins/dev-tooling"
 
-# Answers the `npm pkg get "scripts.<name>"` probe with the body the Shopware
-# Administration package.json declares.
-_fake_admin_script_body() {
-    local name="$1"
-
-    case "${name}" in
-        lint)
-            printf '%s\n' '"eslint src test build.ts --cache"' ;;
-        lint:fix)
-            printf '%s\n' '"npm run lint -- --fix"' ;;
-        lint:debugging)
-            printf '%s\n' '"eslint"' ;;
-        lint:scss)
-            printf '%s\n' '"npm run stylelint:base -- **/*.scss"' ;;
-        lint:scss-fix)
-            printf '%s\n' '"npm run lint:scss -- --fix"' ;;
-        jest:base)
-            printf '%s\n' '"jest --config jest.config.js"' ;;
-        build)
-            printf '%s\n' '"vite build"' ;;
-        *)
-            printf '%s\n' '{}' ;;
-    esac
-}
-
 setup() {
     LINT_CONFIG_FILE="${BATS_TEST_TMPDIR}/.mcp-js-tooling.json"
     JS_CONTEXT="admin"
@@ -53,6 +28,7 @@ JSON
     log() { :; }
     CALLS_FILE="${BATS_TEST_TMPDIR}/calls.log"
     source "${PLUGIN_DIR}/shared/environment.sh"
+    source "${PLUGIN_DIR}/shared/js_paths.sh"
     source "${PLUGIN_DIR}/shared/scope.sh"
     PROJECT_ROOT="${BATS_TEST_TMPDIR}"
     export PROJECT_ROOT
@@ -70,7 +46,7 @@ JSON
         case "${cmd}" in
             'npm pkg get "scripts.'*)
                 local name="${cmd#npm pkg get \"scripts.}"
-                _fake_admin_script_body "${name%\"}"
+                shopware_trunk_script_body administration "${name%\"}"
                 ;;
             *)
                 printf '%s\n' "${cmd}"
@@ -78,6 +54,9 @@ JSON
         esac
     }
     source "${PLUGIN_DIR}/mcp-server-js-admin/lib/eslint.sh"
+    source "${PLUGIN_DIR}/mcp-server-js-admin/lib/stylelint.sh"
+    source "${PLUGIN_DIR}/mcp-server-js-admin/lib/prettier.sh"
+    source "${PLUGIN_DIR}/mcp-server-js-admin/lib/tsc.sh"
     source "${PLUGIN_DIR}/mcp-server-js-admin/lib/jest.sh"
     source "${PLUGIN_DIR}/mcp-server-js-admin/lib/lint-all.sh"
     source "${PLUGIN_DIR}/mcp-server-js-admin/lib/build.sh"
@@ -88,6 +67,57 @@ teardown() {
     worktree_state_cleanup
     unset LINT_ENV LINT_WORKDIR LINT_CONFIG_FILE JS_CONTEXT SCOPE_CWD SCOPE_NAME SCOPE_JS_SUBDIR CALLS_FILE \
         PROJECT_ROOT DEV_TOOLING_STATE_FILE
+}
+
+js_tool_refuses_string_section() {
+    local function_name="$1" section="$2"
+    jq --arg section "${section}" '.scopes["plugin-x"][$section] = "invalid"' "${LINT_CONFIG_FILE}" > "${LINT_CONFIG_FILE}.new"
+    mv "${LINT_CONFIG_FILE}.new" "${LINT_CONFIG_FILE}"
+    run "${function_name}" '{"scope":"plugin-x"}'
+    assert_failure
+    assert_output --partial 'Config error: jq could not evaluate'
+    assert_output --partial 'Cannot index string'
+    [ ! -e "${CALLS_FILE}" ]
+}
+
+bats_test_function --description "admin eslint_check: string section refuses without executing" -- js_tool_refuses_string_section tool_eslint_check eslint
+bats_test_function --description "admin eslint_fix: string section refuses without executing" -- js_tool_refuses_string_section tool_eslint_fix eslint
+bats_test_function --description "admin stylelint_check: string section refuses without executing" -- js_tool_refuses_string_section tool_stylelint_check stylelint
+bats_test_function --description "admin stylelint_fix: string section refuses without executing" -- js_tool_refuses_string_section tool_stylelint_fix stylelint
+bats_test_function --description "admin prettier_check: string section refuses without executing" -- js_tool_refuses_string_section tool_prettier_check prettier
+bats_test_function --description "admin prettier_fix: string section refuses without executing" -- js_tool_refuses_string_section tool_prettier_fix prettier
+bats_test_function --description "admin tsc_check: string section refuses without executing" -- js_tool_refuses_string_section tool_tsc_check tsc
+bats_test_function --description "admin jest_run: string section refuses without executing" -- js_tool_refuses_string_section tool_jest_run jest
+
+# The read of the "unit" script body is the one command that precedes the
+# install flag check.
+@test "jest: an invalid install flag refuses before running any command but the script read" {
+    jq '.scopes["plugin-x"].jest.install_if_missing = "true"' "${LINT_CONFIG_FILE}" > "${LINT_CONFIG_FILE}.new"
+    mv "${LINT_CONFIG_FILE}.new" "${LINT_CONFIG_FILE}"
+    run tool_jest_run '{"scope":"plugin-x"}'
+    assert_failure
+    assert_output --partial 'jest.install_if_missing must be a boolean (found string)'
+    run grep -v -F 'npm pkg get "scripts.unit"' "${CALLS_FILE}"
+    assert_failure 1
+}
+
+@test "jest: explicit null install flag refuses before running any command but the script read" {
+    jq '.scopes["plugin-x"].jest.install_if_missing = null' "${LINT_CONFIG_FILE}" > "${LINT_CONFIG_FILE}.new"
+    mv "${LINT_CONFIG_FILE}.new" "${LINT_CONFIG_FILE}"
+    run tool_jest_run '{"scope":"plugin-x"}'
+    assert_failure
+    assert_output --partial 'jest.install_if_missing must be a boolean (found null)'
+    run grep -v -F 'npm pkg get "scripts.unit"' "${CALLS_FILE}"
+    assert_failure 1
+}
+
+@test "jest: an invalid env map refuses with jq's error" {
+    jq '.scopes["plugin-x"].jest.env = "invalid" | .scopes["plugin-x"].jest.install_if_missing = false' "${LINT_CONFIG_FILE}" > "${LINT_CONFIG_FILE}.new"
+    mv "${LINT_CONFIG_FILE}.new" "${LINT_CONFIG_FILE}"
+    run tool_jest_run '{"scope":"plugin-x"}'
+    assert_failure
+    assert_output --partial 'string ("invalid") has no keys'
+    [ ! -e "${CALLS_FILE}" ]
 }
 
 @test "eslint scoped: runs under scope cwd" {
@@ -114,6 +144,25 @@ teardown() {
     run tool_eslint_check '{"scope":"ghost"}'
     assert_failure
     assert_output --partial 'Scope "ghost" is not declared'
+}
+
+# The scope runs in the plugin root, so a plugin's own administration tree is a
+# path below that root and gets no rebase onto the core package directory.
+@test "eslint scoped: a repo-root path under the scope cwd keeps its path below the plugin root" {
+    mkdir -p "${BATS_TEST_TMPDIR}/custom/plugins/X/src/Resources/app/administration/src"
+    touch "${BATS_TEST_TMPDIR}/custom/plugins/X/src/Resources/app/administration/src/x.ts"
+    run tool_eslint_check '{"scope":"plugin-x","paths":["custom/plugins/X/src/Resources/app/administration/src/x.ts"]}'
+    assert_success
+    run cat "${CALLS_FILE}"
+    assert_line --regexp '^\[scope=custom/plugins/X\|sub=\] npm exec --no -- eslint .* "src/Resources/app/administration/src/x\.ts"$'
+}
+
+@test "stylelint scoped with paths: probes for and runs the local binary under the scope cwd" {
+    run tool_stylelint_check '{"scope":"plugin-x","paths":["src/scss/base.scss"]}'
+    assert_success
+    run cat "${CALLS_FILE}"
+    assert_line --partial '[scope=custom/plugins/X|sub=] npm exec --no -c "test -x node_modules/.bin/stylelint'
+    assert_line '[scope=custom/plugins/X|sub=] npm exec --no -- stylelint --cache -f string "src/scss/base.scss"'
 }
 
 @test "jest scoped: runs in scope cwd + jest.cwd" {
@@ -143,7 +192,7 @@ _set_jest_env() {
     _set_jest_env '{"NODE_OPTIONS":"--require ./bootstrap.js"}'
     run tool_jest_run '{"scope":"plugin-x"}'
     assert_success
-    assert_output --partial 'NODE_OPTIONS="--require ./bootstrap.js" npm run jest:base'
+    assert_output --partial 'NODE_OPTIONS="--require ./bootstrap.js" npm run unit'
 }
 
 @test "jest scoped: an env value containing a line break is refused" {
@@ -153,13 +202,25 @@ _set_jest_env() {
     assert_output --partial 'declares a jest.env entry containing a line break'
 }
 
+@test "jest scoped: a refused test path pattern installs nothing" {
+    # node_modules deliberately missing, so install_if_missing would run npm ci
+    mkdir -p "${BATS_TEST_TMPDIR}/custom/plugins/X/tests/jest/administration"
+    touch "${CALLS_FILE}"
+    run tool_jest_run '{"scope":"plugin-x","testPathPatterns":"a\nb"}'
+    assert_failure
+    assert_output --partial "contains a line break"
+    run cat "${CALLS_FILE}"
+    refute_output --partial "npm ci"
+}
+
 @test "jest scoped: install_if_missing runs npm ci when node_modules absent" {
     # node_modules deliberately missing
     mkdir -p "${BATS_TEST_TMPDIR}/custom/plugins/X/tests/jest/administration"
     run tool_jest_run '{"scope":"plugin-x"}'
     assert_success
     run cat "${CALLS_FILE}"
-    assert_line --index 0 --partial "npm ci"
+    assert_line --index 0 --partial 'npm pkg get "scripts.unit"'
+    assert_line --index 1 --partial "npm ci"
 }
 
 @test "jest scoped: install_if_missing skipped when node_modules present" {
@@ -196,14 +257,6 @@ _set_jest_env() {
     refute_line --partial "npm ci"
 }
 
-@test "jest scoped: routes at jest:base, not the fallback aggregate" {
-    mkdir -p "${BATS_TEST_TMPDIR}/custom/plugins/X/tests/jest/administration/node_modules"
-    run tool_jest_run '{"scope":"plugin-x"}'
-    assert_success
-    assert_output --partial "npm run jest:base"
-    refute_output --partial "npm run unit"
-}
-
 @test "lint_all scoped: runs under scope cwd" {
     run tool_lint_all '{"scope":"plugin-x"}'
     assert_success
@@ -238,3 +291,27 @@ _set_jest_env() {
     run cat "${CALLS_FILE}"
     assert_line --partial "[scope=custom/plugins/X|sub=]"
 }
+
+# The core-only tools run scripts a plugin package does not define, so a
+# default_scope pinned to a plugin must not move them into it.
+_assert_core_tool_ignores_default_scope() {
+    local pinned
+    pinned=$(jq '.default_scope = "plugin-x"' "${LINT_CONFIG_FILE}")
+    printf '%s\n' "${pinned}" > "${LINT_CONFIG_FILE}"
+    run "tool_$1" '{}'
+    assert_success
+    run cat "${CALLS_FILE}"
+    refute_line --partial "[scope=custom/plugins/X"
+    assert_line --partial "[scope=<unscoped>|sub=]"
+}
+
+bats_test_function --description "lint_all: a default_scope pinned to a plugin still runs in the core package" \
+    -- _assert_core_tool_ignores_default_scope lint_all
+bats_test_function --description "lint_twig: a default_scope pinned to a plugin still runs in the core package" \
+    -- _assert_core_tool_ignores_default_scope lint_twig
+bats_test_function --description "unit_setup: a default_scope pinned to a plugin still runs in the core package" \
+    -- _assert_core_tool_ignores_default_scope unit_setup
+bats_test_function --description "vite_build: a default_scope pinned to a plugin still runs in the core package" \
+    -- _assert_core_tool_ignores_default_scope vite_build
+bats_test_function --description "webpack_build: a default_scope pinned to a plugin still runs in the core package" \
+    -- _assert_core_tool_ignores_default_scope webpack_build

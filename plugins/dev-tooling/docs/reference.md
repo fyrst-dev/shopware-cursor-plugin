@@ -109,7 +109,7 @@ Use console_list with namespace "cache"
 | `scope`          | string  | Scope name from `.mcp-php-tooling.json`; `shopware` forces project-root behavior                                               |
 | `project_root`   | string  | Absolute path to a linked git worktree of the launch root. See [🌳 Worktree Support](#-worktree-support).                       |
 
-With `output_file` set, stdout goes to the file and the response carries only the resolved path, the byte count and the exit status — stderr still comes back in the response. A relative path resolves against the project root, parent directories are created, and the file is replaced only after the command exits zero. A failed command leaves the target as it was and returns its stdout in the response instead. The value is refused when it is longer than 4096 bytes, or when the target already exists as a symlink or as anything other than a regular file. Omit it (or pass an empty string) to get the output in the response as before.
+With `output_file` set, stdout goes to the file and the response carries only the resolved path, the byte count and the exit status — stderr still comes back in the response. A relative path resolves against the project root, parent directories are created, and the file is replaced only after the command exits zero. A failed command leaves the target as it was and returns its stdout in the response instead. The value is refused when it is longer than 4096 bytes or its final path component is `.git`. An existing symlink or non-regular target is also refused. Omit it (or pass an empty string) to get the output in the response as before.
 
 `feature_all` sets `FEATURE_ALL=<value>` in the command's process environment inside the target environment. `feature_all "major"` with `command "cache:clear"` is the deprecation gate `FEATURE_ALL=major bin/console cache:clear`.
 
@@ -118,6 +118,8 @@ With `output_file` set, stdout goes to the file and the response carries only th
 ### `rector_fix` / `rector_check`
 
 Rector refactoring. `rector_fix` detects and applies transformations (preferred); `rector_check` is a dry-run preview.
+
+`rector_fix` reads `composer.json` at the effective root, or under the scope's `cwd` when one is set. It runs `composer rector-fix` when that file defines a `rector-fix` script; otherwise it runs `composer rector`. If only a `rector` script with `--dry-run` is available, the call is refused because the run would apply nothing.
 
 ```
 Use rector_fix with paths ["src/Core/Content/"]
@@ -138,20 +140,24 @@ Use rector_fix with only_suffix "Controller"
 
 ### `set_project_root`
 
-Sets or clears the sticky project root for this server process. With a `project_root`, validates it as a linked git worktree of the launch root and sticks it — every later call on this server targets it until `set_project_root` is called again with no argument. Without one, clears the sticky root unconditionally (no validation of the value discarded) and returns the server to its launch root.
+Sets or clears the sticky project root for this server process, and binds a server that started without one.
+
+- A server started in its own plugin directory has no project root, and the first call carrying a `project_root` binds it instead of sticking it. The root has to be a directory outside the plugin directory that holds this server's `.mcp-php-tooling.json`, at its top or in one of the supported tool directories, unless `MCP_PHP_TOOLING_CONFIG` names the configuration file (a relative value is read against the root being bound); on success the server loads that configuration, derives the environment, and records that root with symlinks resolved, which every later call enters before it runs. After the bind, a tool call may target the launch root itself, in any spelling that resolves to the same directory, or a linked git worktree of it; any other directory is refused. The bind is refused when the configuration cannot be loaded or declares an `environment` other than `native`, `docker`, `docker-compose`, `vagrant` or `ddev`. A call with no `project_root` while unbound is refused: there is no project root to return to.
+- A server that has a project root — started in one, or bound as above — validates a `project_root` as a linked git worktree of that root and sticks it; every later call on this server targets it until `set_project_root` is called again with no argument. Without one, clears the sticky root unconditionally (no validation of the value discarded) and returns the server to its project root; naming the launch root itself, in any spelling that resolves to the same directory, does the same.
 
 ```
+Use php-tooling set_project_root with project_root "/path/to/project"
 Use php-tooling set_project_root with project_root "/path/to/worktree"
 Use php-tooling set_project_root
 ```
 
-| Parameter      | Type   | Description                                                                               |
-|----------------|--------|-------------------------------------------------------------------------------------------|
-| `project_root` | string | Absolute path to a linked git worktree of the launch root. Omit to clear the sticky root. |
+| Parameter      | Type   | Description                                                                                |
+|----------------|--------|--------------------------------------------------------------------------------------------|
+| `project_root` | string | Absolute path to bind, or a linked worktree of the launch root. Once bound, omit to clear. |
 
 ### `cwd`
 
-Reports this server's resolution state: the effective project root, its source (`launch` or `sticky` — `cwd` takes no `project_root`, so it never reports the `call` source the other tools' banners can show), whether it currently resolves, the resolved working directory, the environment, and the configuration file(s) in use. No parameters, validates nothing, never fails — including when a sticky root names a directory that no longer exists.
+Reports this server's resolution state: the effective project root, its source (`launch` or `sticky` — `cwd` takes no `project_root`, so it never reports the `call` source the other tools' banners can show), whether it currently resolves, the resolved working directory, the environment, and the configuration file(s) in use. A server with no project root yet reports the root as `none (unbound)`, names the plugin directory it started in and the `set_project_root` call that binds it, and reports the configuration as pending until a bind loads one. No parameters, validates nothing, never fails — including when a sticky root names a directory that no longer exists.
 
 "Resolves" reports resolution and mapping, not reachability: the existence probe runs on tool calls, not here, so a root `cwd` reports as resolving can still be refused by the next tool call's probe.
 
@@ -161,11 +167,13 @@ Use php-tooling cwd
 
 ## 🖥️ Administration Tools (`js-admin-tooling`)
 
-Runs inside `src/Administration/Resources/app/administration`. No context parameter.
+Runs inside `src/Administration/Resources/app/administration`. No context parameter. ESLint, Stylelint, Prettier, and `tsc_check` reject shell-hostile scoped config paths and quote accepted paths before passing them to the command wrapper.
 
 ### `eslint_check` / `eslint_fix`
 
-ESLint linting / auto-fix for Administration. Two routes, selected by whether `paths` is supplied: with paths, the run goes to the target-less npm script `lint:debugging` so the given paths are the only targets; without paths, the aggregate `lint` / `lint:fix` script runs and its own baked-in targets stay authoritative. The aggregate is never a fallback for a path-scoped run — npm appends `--` arguments to the end of the whole script body, so appending a path to a body that already names its own targets would widen the run rather than narrow it to the path. A path-scoped run refuses outright when `lint:debugging` is unavailable or cannot take appended arguments.
+ESLint linting / auto-fix for Administration. With `paths`, the package's own ESLint binary runs through `npm exec --no -- eslint`; the supplied paths are its only targets. Without `paths`, the aggregate `lint` / `lint:fix` script runs with its own targets.
+
+The aggregate cannot replace a path-scoped run because npm appends arguments after the script body's targets, widening the run. A path-scoped run refuses when the package's `node_modules/.bin/eslint` is missing because `npm exec --no` would otherwise run a global binary.
 
 ```
 Use js-admin-tooling eslint_fix with paths ["src/app/component/"]
@@ -178,13 +186,24 @@ Use js-admin-tooling eslint_fix with paths ["src/app/component/"]
 | `scope`         | string | both           | Scope name from `.mcp-js-tooling.json`; `shopware` forces project-root behavior                          |
 | `project_root`  | string | both           | Absolute path to a linked git worktree of the launch root. See [🌳 Worktree Support](#-worktree-support). |
 
-When `paths` is supplied, these are the ONLY targets the run covers; a path containing `app/administration/` is rebased onto the package directory by stripping everything up to and including that prefix. Omit `paths` to run the targets the aggregate `lint` / `lint:fix` script configures for itself.
+When `paths` is supplied, these are the ONLY targets the run covers. Without a scope, a path containing `app/administration/` loses everything through that prefix. Under a scope the path is rebased onto the scope cwd: a leading `./` and then a leading `<scope cwd>/` come off, an absolute path is cut through its first `/<scope cwd>/`, a path naming the scope cwd itself becomes `.`, and any other path passes through. The plugin's own `app/administration/` segment stays. Omit `paths` to run the targets the aggregate `lint` / `lint:fix` script configures for itself.
 
 Every path is validated before ESLint runs: it must exist and resolve to at least one file carrying an extension the Administration ESLint config reads (`js`, `ts`, `tsx`, `vue`, `json`, `twig`). A path that fails either check is refused with a message naming it, rather than linting nothing and reporting success.
 
 ### `stylelint_check` / `stylelint_fix`
 
-Stylelint SCSS linting / auto-fix. Two routes, selected by whether `paths` is supplied: with paths, the run goes to the target-less npm script `stylelint:base` so the given paths are the only targets; without paths, the aggregate `lint:scss` / `lint:scss-fix` script runs (bare when there is nothing else to append) and its own `**/*.scss` target stays authoritative. The aggregate is never a fallback for a path-scoped run — appending a path to a body that already names `**/*.scss` would widen the run to every SCSS file plus the path, never narrow it. That matters most for `stylelint_fix`, which writes: a widened fix would modify files nobody named. A path-scoped run refuses outright when `stylelint:base` is unavailable.
+Stylelint SCSS linting / auto-fix. Two routes, selected by whether `paths` is supplied:
+
+- With `paths`, the package's own Stylelint binary runs through `npm exec --no -- stylelint --cache`, the flags of the `lint:scss` script without its target. The given paths are the only targets.
+- Without `paths`, the aggregate `lint:scss` / `lint:scss-fix` script runs, bare when there is nothing else to append. Its own `**/*.scss` target stays authoritative.
+
+The aggregate is never a fallback for a path-scoped run. Appending a path to a body that already names `**/*.scss` would widen the run to every SCSS file plus the path. That matters most for `stylelint_fix`, which writes: a widened fix would modify files nobody named.
+
+The run is refused when:
+
+- A path-scoped run finds no `node_modules/.bin/stylelint` in the package directory. `npm exec --no` installs nothing but would run a globally installed `stylelint`, so the tool checks for the package's own binary first.
+- A scoped config contains shell-hostile characters. The tool checks and quotes the config path before appending `--config`.
+- A run without `paths` has a scoped config, and the aggregate script's own `stylelint` command already passes `--config`, `--config=`, `-c` or `-c=`. Stylelint takes its config option only once. The tool reads only that script's own body, not the body of a script it calls through `npm run`.
 
 ```
 Use js-admin-tooling stylelint_fix with paths ["src/**/*.scss"]
@@ -200,11 +219,23 @@ Use js-admin-tooling stylelint_fix with paths ["src/**/*.scss"]
 When `paths` is supplied, these are the ONLY targets the run covers. Omit `paths` to run the targets the aggregate SCSS script configures for itself.
 
 > [!NOTE]
-> A literal path is validated before Stylelint runs: it must exist and resolve to at least one `.scss` or `.css` file, or it is refused with a message naming it rather than linting nothing and reporting success. A glob pattern (containing `*`, `?`, or `[`) skips that check — the existence probe cannot resolve a glob — and reaches Stylelint unchecked for expansion there.
+> A literal path is validated before Stylelint runs. A file must carry the `.scss` extension `lint:scss` lints, and a directory must hold at least one `.scss` file. Otherwise the path is refused with a message naming it, rather than linting nothing and reporting success.
+>
+> A directory, including one whose name ends in `.scss`, reaches Stylelint as the quoted pattern `<dir>/**/*.scss`. Stylelint expands it, so only `.scss` files are linted or fixed. Stylelint given a bare directory would read every file in it.
+>
+> A glob pattern (containing `*`, `?`, or `[`) skips the validation, because the existence probe cannot resolve a glob. It reaches Stylelint unchecked for expansion there.
+
+> [!NOTE]
+> Under `ddev`, directory and glob paths are refused. `ddev exec` re-parses the command in the container's shell, which would expand the pattern itself before Stylelint sees it. Pass file paths there. A directory or glob path holding a space, a tab or `#` is accepted because `ddev exec` quotes that argument again, so it reaches Stylelint intact.
 
 ### `prettier_check` / `prettier_fix`
 
-Prettier format check / auto-format for Administration. Two routes, selected by whether `paths` is supplied: with paths, the run goes to the target-less npm script `prettier:base`, with the `--check` / `--write` mode flag supplied by the tool, so the given paths are the only targets; without paths, the aggregate `format` / `format:fix` script runs bare (plus a `--config` override when a scope selects one) and its own glob targets stay authoritative. The aggregate is never a fallback for a path-scoped run, for the same reason as ESLint and Stylelint above — appending would widen, not narrow. That matters most for `prettier_fix`, which writes. A path-scoped run refuses outright when `prettier:base` is unavailable.
+Prettier format check / auto-format for Administration. Two routes, selected by whether `paths` is supplied:
+
+- With `paths`, the package's own Prettier binary runs through `npm exec --no -- prettier` with `--check` (`prettier_check`) or `--write --cache` (`prettier_fix`), the flags of the `format` / `format:fix` scripts without their globs. The given paths are the only targets.
+- Without `paths`, the aggregate `format` / `format:fix` script runs bare, plus a `--config` override when a scope selects one. Its own glob targets stay authoritative.
+
+The aggregate is never a fallback for a path-scoped run, for the reason given for [Stylelint](#stylelint_check--stylelint_fix). That matters most for `prettier_fix`, which writes. A path-scoped run is refused when `node_modules/.bin/prettier` is missing from the package directory.
 
 ```
 Use js-admin-tooling prettier_check with paths ["src/app/component/"]
@@ -219,13 +250,19 @@ Use js-admin-tooling prettier_check with paths ["src/app/component/"]
 When `paths` is supplied, these are the ONLY targets the run covers. Omit `paths` to check/format the targets the aggregate `format` / `format:fix` script configures for itself.
 
 > [!NOTE]
-> A literal path is validated before Prettier runs: it must exist and resolve to at least one `.js` or `.ts` file, or it is refused with a message naming it. A glob pattern (containing `*`, `?`, or `[`) skips that check and reaches Prettier unchecked for expansion there.
+> A literal path is validated before Prettier runs. A file must carry one of the extensions the `format` globs name (`.js`, `.ts`, `.mjs`), and a directory must hold at least one such file. Otherwise the path is refused with a message naming it.
+>
+> A directory, including one whose name ends in one of those extensions, reaches Prettier as the quoted pattern `<dir>/**/*.{js,ts,mjs}`. Prettier expands it, so only those files are checked or rewritten. Prettier given a bare directory would format every file type it supports.
+>
+> A glob pattern (containing `*`, `?`, or `[`) skips the validation and reaches Prettier unchecked for expansion there.
+>
+> Under `ddev`, directory and glob paths are refused, as for [Stylelint](#stylelint_check--stylelint_fix).
 
 ### `jest_run`
 
 Jest unit tests. Single run only. Watch mode isn't supported (see [mcp-enforcement.md](./mcp-enforcement.md)).
 
-Runs at the target-less npm script `jest:base`. When that script is unavailable, the tool falls back to the aggregate `unit` script instead of refusing — `jest_run` covers the same suite either way, so nothing is silently widened — but `unit`'s body hardcodes `--ci`, and the tool prints a notice naming the consequences (see the `ci` row below).
+Every run uses the package's npm script `unit`. The core Administration `unit` script passes `--ci`. The tool checks scope and test-pattern arguments before attempting dependency installation, so those argument refusals install nothing.
 
 **The result comes from Jest's own JSON report, not the process exit code.** Every run appends `--json --outputFile=<path>`; the tool clears that path before starting, reads it afterwards, and decides from the counts it carries:
 
@@ -237,7 +274,7 @@ Runs at the target-less npm script `jest:base`. When that script is unavailable,
 | all passed, process exited non-zero | success, stating the exit code prominently and keeping the output |
 | report missing or unparseable       | falls back to the exit code, and says the status came from there  |
 
-The last two rows are the point. A coverage-threshold breach or a post-run writer erroring makes Jest exit non-zero after every test passed, and that was previously reported as a failed run. The report also carries the counts when `ci` is true, where Jest's own summary line is suppressed.
+The last two rows are the point. A coverage-threshold breach or a post-run writer erroring makes Jest exit non-zero after every test passed, and that was previously reported as a failed run. The report also carries the counts under `unit`'s CI mode, where Jest's own summary line is suppressed.
 
 > [!NOTE]
 > The report path is cleared before each run rather than after. A report present afterwards therefore always belongs to the run that just finished — otherwise a run that crashed before writing one would be judged by the previous run's results, and a failing suite could be reported as a pass. One report file per server process may sit in the environment's `/tmp` between runs.
@@ -251,17 +288,17 @@ Use js-admin-tooling jest_run with coverage true
 |--------------------|---------|----------------------------------------------------------------------------------------------------------|
 | `testPathPatterns` | string  | Regex on test file paths                                                                                 |
 | `testNamePattern`  | string  | Regex on test names                                                                                      |
-| `coverage`         | boolean | Generate coverage report                                                                                 |
-| `updateSnapshots`  | boolean | Update snapshots                                                                                         |
-| `ci`               | boolean | Run Jest in CI mode (`--ci`, default `false`); see below.                                                |
+| `coverage`         | boolean | Append `--coverage`; core Administration already collects coverage on every run.                         |
+| `updateSnapshots`  | boolean | Append `--updateSnapshot` to update snapshots                                                            |
+| `ci`               | boolean | Append `--ci`. The core `unit` script already passes it, but a plugin scope's `unit` script may not.     |
 | `scope`            | string  | Scope name from `.mcp-js-tooling.json`; `shopware` forces project-root behavior                          |
 | `project_root`     | string  | Absolute path to a linked git worktree of the launch root. See [🌳 Worktree Support](#-worktree-support). |
 
-`ci` runs Jest in CI mode (`--ci`). `jest.config.ts` derives `isCi` from an exact `--ci` match in `process.argv` and uses it for both `collectCoverage` and the reporter choice: turning `ci` on collects coverage regardless of `coverage` and swaps the reporters to `jest-silent-reporter` plus `jest-junit`, suppressing the per-test lines and the summary. `ci` is forced on, without recourse, whenever the `unit` fallback above is in effect. Leave it off unless CI-identical output is needed.
+The Administration `unit` script always passes `--ci`. Its Jest configuration derives `isCi` from that argument, collects coverage, and selects `jest-silent-reporter` plus `jest-junit`. Passing `coverage` adds `--coverage` but does not change core Administration coverage collection. `jest-silent-reporter` suppresses Jest's `Tests:` line, so the tool reads the counts from its JSON report.
 
 ### `tsc_check`
 
-`npm run lint:types` against the project tsconfig.
+`npm run lint:types` against the project tsconfig. An explicit scope can supply a TypeScript project config; the tool rejects shell-hostile config paths and quotes accepted ones. Without `scope`, the tool uses `default_scope`, or the core Administration package when no default is set.
 
 | Parameter      | Type   | Description                                                                                              |
 |----------------|--------|----------------------------------------------------------------------------------------------------------|
@@ -270,7 +307,7 @@ Use js-admin-tooling jest_run with coverage true
 
 ### `lint_all`
 
-Runs TypeScript, ESLint, Stylelint, and Prettier in one shot. Intended for pre-commit validation.
+Runs TypeScript, ESLint, Stylelint, and Prettier in one shot. Intended for pre-commit validation. Without `scope`, `lint_all` ignores `default_scope` and runs the core script.
 
 | Parameter      | Type   | Description                                                                                              |
 |----------------|--------|----------------------------------------------------------------------------------------------------------|
@@ -279,7 +316,7 @@ Runs TypeScript, ESLint, Stylelint, and Prettier in one shot. Intended for pre-c
 
 ### `lint_twig`
 
-ESLint against `.html.twig` files. Validates Admin Vue component templates.
+ESLint against `.html.twig` files. Validates Admin Vue component templates. Without `scope`, `lint_twig` ignores `default_scope` and runs the core script.
 
 | Parameter      | Type   | Description                                                                                              |
 |----------------|--------|----------------------------------------------------------------------------------------------------------|
@@ -288,7 +325,7 @@ ESLint against `.html.twig` files. Validates Admin Vue component templates.
 
 ### `unit_setup`
 
-Regenerates the component import resolver map. Run it when Jest fails with import/module resolution errors.
+Regenerates the component import resolver map. Run it when Jest fails with import/module resolution errors. Without `scope`, `unit_setup` ignores `default_scope` and runs the core script.
 
 | Parameter      | Type   | Description                                                                                              |
 |----------------|--------|----------------------------------------------------------------------------------------------------------|
@@ -297,7 +334,7 @@ Regenerates the component import resolver map. Run it when Jest fails with impor
 
 ### `vite_build`
 
-Vite build for Administration (Vue 3).
+Vite build for Administration (Vue 3). Without `scope`, `vite_build` ignores `default_scope` and runs the core build.
 
 | Parameter      | Type   | Description                                                                                              |
 |----------------|--------|----------------------------------------------------------------------------------------------------------|
@@ -307,11 +344,11 @@ Vite build for Administration (Vue 3).
 
 ### `set_project_root`
 
-Sets or clears the sticky project root for this server process. Same behavior as the PHP server's `set_project_root` above — a separate process, a separate sticky value.
+Sets or clears the sticky project root for this server process, and binds a server that started without one. Same behavior as the PHP server's `set_project_root` above — a separate process, a separate sticky value. A bind requires a directory holding this server's own `.mcp-js-tooling.json`, at its top or in one of the supported tool directories, unless `MCP_JS_TOOLING_CONFIG` names the configuration file; after the bind, a call may target that root itself or stick a linked git worktree of it.
 
-| Parameter      | Type   | Description                                                                               |
-|----------------|--------|-------------------------------------------------------------------------------------------|
-| `project_root` | string | Absolute path to a linked git worktree of the launch root. Omit to clear the sticky root. |
+| Parameter      | Type   | Description                                                                                |
+|----------------|--------|--------------------------------------------------------------------------------------------|
+| `project_root` | string | Absolute path to bind, or a linked worktree of the launch root. Once bound, omit to clear. |
 
 ### `cwd`
 
@@ -319,14 +356,21 @@ Reports this server's resolution state. No parameters. Same shape as the PHP ser
 
 ## 🛒 Storefront Tools (`js-storefront-tooling`)
 
-Runs inside `src/Storefront/Resources/app/storefront`. No context parameter.
+Runs inside `src/Storefront/Resources/app/storefront`. No context parameter. ESLint and Stylelint reject shell-hostile scoped config paths and quote accepted paths before passing them to the command wrapper.
 
 > [!NOTE]
 > Prettier and TypeScript aren't exposed for Storefront. The Shopware 6 Storefront `package.json` has no corresponding npm scripts.
 
 ### `eslint_check` / `eslint_fix`
 
-ESLint linting / auto-fix for Storefront. The Storefront splits ESLint across two npm scripts — `eslint:app` for the `app/storefront` package and `eslint:components` for the component tree under `src/Storefront/Resources/views/components` — so each supplied path is routed to the tree that owns it and both scripts run when both trees are targeted. A path containing `views/components` goes to the components tree; everything else goes to the app tree.
+ESLint linting / auto-fix for Storefront. The Storefront's `lint:js` script runs ESLint twice: once in the `app/storefront` package, and once from `src/Storefront/Resources` with `--config ./app/storefront/eslint.config.js` for the component tree under `views/components`. Each supplied path is routed to the tree that owns it, and both trees run when both are targeted. A path containing `views/components` goes to the components tree; everything else goes to the app tree.
+
+With paths, each tree runs the package's own ESLint binary through `npm exec --no`, with the flags of its `lint:js` call (`--no-error-on-unmatched-pattern --report-unused-disable-directives`, plus the components config). The given paths are the only targets. The components call starts with `npm exec --no -c` in the package directory and changes to `../..` before ESLint runs. App-tree paths under a scope run with the scope's ESLint config.
+
+A path-scoped run is refused when:
+
+- `node_modules/.bin/eslint` is missing from the package directory.
+- A scope other than `shopware` is active and a path routes to the components tree. That tree and `./app/storefront/eslint.config.js` belong to the core Storefront package, not to the scope's package. The refusal comes before anything runs.
 
 ```
 Use js-storefront-tooling eslint_fix with paths ["src/plugin/"]
@@ -344,38 +388,61 @@ Three path forms are accepted, per path:
 
 - repo-root-relative — `src/Storefront/Resources/views/components/…` or `src/Storefront/Resources/app/storefront/…`
 - tree-relative — `views/components/…` for the components tree, `src/…` or `build/…` for the app tree
-- a path already carrying the package prefix
+- a path already carrying the package prefix — `app/storefront/…`, unscoped runs only: under a scope that prefix stays as written and the path is refused as missing
+
+Under a scope, app-tree paths are rebased onto the scope cwd: a leading `./` and then a leading `<scope cwd>/` come off, an absolute path is cut through its first `/<scope cwd>/`, a path naming the scope cwd itself becomes `.`, and any other path passes through. The plugin's own `app/storefront/` segment stays.
 
 Every path is validated before ESLint runs. A path that does not exist, or that resolves to no file carrying an extension the Storefront ESLint config reads (`js`, `ts`, `mjs`, `cjs`, `jsx`, `tsx`, `vue`, `json`), is refused with a message naming it — so `paths: ["src/scss"]` fails loudly instead of linting nothing and reporting success. A path containing a single quote, a newline, or a carriage return is refused as well; those characters cannot be quoted safely through the container command wrappers.
 
 Omitting `paths` runs the aggregate `lint:js` / `lint:js:fix` script bare across both trees.
 
 > [!WARNING]
-> `output_format` is ignored on a no-paths `eslint_check`. The no-paths branch runs `npm run lint:js` bare, and that script chains bare `npm run` calls, so an appended reporter flag would never reach ESLint. Pass `paths` when you need `json` output.
+> `output_format` is ignored on a no-paths `eslint_check`. The no-paths branch runs `npm run lint:js` bare, because that script chains two ESLint calls and ends in a subshell, so an appended reporter flag would land after the subshell instead of reaching either call. Pass `paths` when you need `json` output.
 
 > [!NOTE]
 > A no-paths run under an active scope that selects its own ESLint config is refused rather than run, because the bare script would silently apply the package's own config instead. Pass `paths`, or call with `scope: "shopware"`.
 
 ### `stylelint_check` / `stylelint_fix`
 
-Stylelint SCSS linting / auto-fix. Same routing as the Administration versions: with `paths` supplied, the run goes to the target-less npm script `stylelint:app` so the given paths are the only targets; without `paths`, the aggregate `lint:scss` / `lint:scss-fix` script runs and its own `./src/scss` target stays authoritative. The aggregate is never a fallback for a path-scoped run, and a path-scoped run refuses outright when `stylelint:app` is unavailable. Parameters: `paths` (file paths or glob patterns, relative to the `app/storefront` package directory), `output_format` on the check tool (`string` default, `json`, `compact`), `scope`, and `project_root` (see [🌳 Worktree Support](#-worktree-support)).
+Stylelint SCSS linting / auto-fix. Same routing as the [Administration versions](#stylelint_check--stylelint_fix), selected by whether `paths` is supplied:
+
+- With `paths`, the package's own Stylelint binary runs through `npm exec --no -- stylelint --config stylelint.config.js --cache`, the flags of the `lint:scss` script without its target. The given paths are the only targets.
+- Without `paths`, the aggregate `lint:scss` / `lint:scss-fix` script runs, and its own `./src/scss` target stays authoritative.
+
+The aggregate is never a fallback for a path-scoped run.
+
+On the path route under a scope, `--config stylelint.config.js` is left out, because that file belongs to the core Storefront package. A scope's own Stylelint config is then the only `--config`. Without one, Stylelint finds the scope package's own config. Without `paths`, a scope's Stylelint config is appended to the aggregate script.
+
+The run is refused when:
+
+- A path-scoped run finds no `node_modules/.bin/stylelint` in the package directory.
+- A scoped config path contains shell-hostile characters.
+- A run without `paths` has a scoped config, and the aggregate script's own `stylelint` command already passes `--config`, `--config=`, `-c` or `-c=`, as the core `lint:scss` does. The tool reads only that script's own body, so `lint:scss-fix`, which calls `lint:scss` through `npm run`, is not refused by this check.
+
+Parameters: `paths` (file paths or glob patterns, relative to the `app/storefront` package directory), `output_format` on the check tool (`string` default, `json`, `compact`), `scope`, and `project_root` (see [🌳 Worktree Support](#-worktree-support)).
 
 ```
 Use js-storefront-tooling stylelint_fix with paths ["src/**/*.scss"]
 ```
 
 > [!NOTE]
-> A literal path is validated before Stylelint runs: it must exist and resolve to at least one `.scss` or `.css` file, or it is refused with a message naming it. A glob pattern (containing `*`, `?`, or `[`) skips that check and reaches Stylelint unchecked for expansion there.
+> A literal path is validated before Stylelint runs. A file must carry the `.scss` or `.css` extension, and a directory must hold at least one such file. Otherwise the path is refused with a message naming it.
+>
+> A directory, including one whose name ends in `.scss` or `.css`, reaches Stylelint as the quoted pattern `<dir>/**/*.{scss,css}`, so only those files are linted or fixed.
+>
+> A glob pattern (containing `*`, `?`, or `[`) skips the validation and reaches Stylelint unchecked for expansion there.
+>
+> Under `ddev`, directory and glob paths are refused unless they hold a space, a tab or `#`, as for [Administration Stylelint](#stylelint_check--stylelint_fix).
 
 ### `jest_run`
 
-Jest unit tests for the Storefront **`app/storefront` package suite only**. Jest's `rootDir` is that package and its `testMatch` collects `**/test/**/*.test.js`, so the component tests under `src/Storefront/Resources/views/components/` are never collected — run those with [`vitest_run`](#vitest_run). A `testPathPatterns` value naming `views/components` is rejected with a message pointing at `vitest_run`.
+Jest unit tests for the Storefront **`app/storefront` package suite only**. Jest's `rootDir` is that package and its `testMatch` collects `**/test/**/*.test.js`, so the component tests under `src/Storefront/Resources/views/components/` are never collected — run those with [`vitest_run`](#vitest_run). A `testPathPatterns` value naming `views/components` is rejected. Under scope `shopware` the message points at `vitest_run`; under a plugin scope it states that `vitest_run` refuses every plugin scope.
 
-Runs at the target-less npm script `jest:base`. When that script is unavailable, the tool falls back to the aggregate `unit` script instead of refusing — `jest_run` covers the same suite either way — but `unit`'s body hardcodes `--ci`, and the tool prints a notice naming the consequence: the `ci` argument is ignored and CI mode is forced.
+Every run uses the package's npm script `unit`. The core Storefront `unit` script passes `--ci`. The `ci` argument appends `--ci` for a plugin scope's `unit` script that does not pass it. The tool checks scope and test-pattern arguments before attempting dependency installation, so those argument refusals install nothing.
 
 The result comes from Jest's JSON report rather than the process exit code, exactly as described for [the Admin version](#jest_run) — including the cleared-before-each-run report path. This matters more here than on Administration: the Storefront config collects coverage unconditionally and enforces global thresholds, so a path-scoped run of a few files exits non-zero on the threshold while every test passes. Those runs previously reported as errors.
 
-Same parameters as the Admin version — `testPathPatterns`, `testNamePattern`, `coverage`, `updateSnapshots`, `ci`, plus `scope` and `project_root` (see [🌳 Worktree Support](#-worktree-support)) — except `ci`'s consequence differs here: the Storefront `jest.config.js` sets `collectCoverage: true` unconditionally, so `coverage` is unaffected either way and `ci` changes only Jest's own CI-mode behavior. Under CI mode Jest declines to write *new* snapshots — but an explicit `updateSnapshots` still wins, because Jest resolves `--ci` without `--updateSnapshot` to snapshot mode `none` and an explicit `--updateSnapshot` to `all` regardless of `--ci`.
+Same parameters as the Admin version: `testPathPatterns`, `testNamePattern`, `coverage`, `updateSnapshots`, `ci`, `scope`, and `project_root` (see [🌳 Worktree Support](#-worktree-support)). Storefront's Jest configuration always collects coverage, so the `coverage` flag adds `--coverage` without changing coverage collection. CI mode writes no missing snapshots; explicit `updateSnapshots` adds `--updateSnapshot` and permits snapshot updates.
 
 ### `vitest_run`
 
@@ -392,8 +459,10 @@ Use js-storefront-tooling vitest_run with testNamePattern "renders the slider"
 | `testNamePattern` | string  | Regex on test names (`-t`)                                                                               |
 | `coverage`        | boolean | Run `unit:components:coverage` instead                                                                   |
 | `updateSnapshots` | boolean | Update Vitest snapshots (`-u`)                                                                           |
-| `scope`           | string  | Scope name from `.mcp-js-tooling.json`                                                                   |
+| `scope`           | string  | Only `shopware` is accepted; omitting it also selects core behavior. Plugin scopes are refused.          |
 | `project_root`    | string  | Absolute path to a linked git worktree of the launch root. See [🌳 Worktree Support](#-worktree-support). |
+
+`vitest_run` ignores `default_scope` when `scope` is omitted.
 
 `paths` accepts the same three forms as the Storefront ESLint tools (repo-root-relative, tree-relative `views/components/…`, or a path already carrying the package prefix) and each one is checked for existence before Vitest runs. A path containing a single quote or a line break is refused.
 
@@ -416,7 +485,7 @@ Neither tool takes `paths` and neither takes `scope`: the composer script body i
 
 ### `webpack_build`
 
-Webpack build for Storefront (vanilla JS).
+Webpack build for Storefront (vanilla JS). Without `scope`, `webpack_build` ignores `default_scope` and runs the core build. `mode` accepts `development` and `production`; omitting it selects `production`.
 
 | Parameter      | Type   | Description                                                                                              |
 |----------------|--------|----------------------------------------------------------------------------------------------------------|
@@ -426,11 +495,11 @@ Webpack build for Storefront (vanilla JS).
 
 ### `set_project_root`
 
-Sets or clears the sticky project root for this server process. Same behavior as the PHP server's `set_project_root` above — a separate process, a separate sticky value.
+Sets or clears the sticky project root for this server process, and binds a server that started without one. Same behavior as the PHP server's `set_project_root` above — a separate process, a separate sticky value. A bind requires a directory holding this server's own `.mcp-js-tooling.json`, at its top or in one of the supported tool directories, unless `MCP_JS_TOOLING_CONFIG` names the configuration file; after the bind, a call may target that root itself or stick a linked git worktree of it.
 
-| Parameter      | Type   | Description                                                                               |
-|----------------|--------|-------------------------------------------------------------------------------------------|
-| `project_root` | string | Absolute path to a linked git worktree of the launch root. Omit to clear the sticky root. |
+| Parameter      | Type   | Description                                                                                |
+|----------------|--------|--------------------------------------------------------------------------------------------|
+| `project_root` | string | Absolute path to bind, or a linked worktree of the launch root. Once bound, omit to clear. |
 
 ### `cwd`
 
@@ -438,12 +507,14 @@ Reports this server's resolution state. No parameters. Same shape as the PHP ser
 
 ## 🌳 Worktree Support
 
-Every tool except `cwd`, on all three servers, accepts `project_root`. Pass it to run one call against a linked git worktree of the root the server was launched in, instead of the launch root itself. Targeting works in every environment: `native`, `docker`, `docker-compose`, `vagrant`, and `ddev`.
+Every tool except `cwd`, on all three servers, accepts `project_root`. Pass it to run one call against a linked git worktree of the server's project root, instead of that root itself. Targeting works in every environment: `native`, `docker`, `docker-compose`, `vagrant`, and `ddev`.
+
+**Binding a server that has no project root.** Cursor starts a server in the session's project directory, so it is bound at launch. A server started in the plugin's own directory comes up unbound and refuses every tool except `set_project_root` and `cwd`. On such a server the first `set_project_root` call carrying a path binds it — the configuration, the environment and the working directory are derived from that root, and it stays the server's root for the rest of the process, so a later call may target that root itself or stick a linked git worktree of it. Exporting `PROJECT_ROOT` with the project path before starting the server binds at startup instead. Throughout this section, "launch root" means the root the server is bound to, by either route.
 
 What the environment adds:
 
 - **In-root under containers.** `docker`, `docker-compose`, `vagrant`, and `ddev` refuse a worktree outside the launch project root, which is the only tree the container or VM mounts. An in-root worktree is reached at its own position below the environment's working directory; under `docker-compose` a configured `docker-compose.workdir` decides, or else the longest matching bind mount.
-- **Relative linkage, in every environment.** The worktree's `.git` file has to carry a relative `gitdir` pointer. `git worktree add` writes an absolute one unless the repository sets `worktree.useRelativePaths`, and an absolute pointer names a host path that does not exist inside a container — so the call is refused under `native` too. Relink the worktree with `git -c worktree.useRelativePaths=true worktree repair <worktree-path>` (git 2.48 or newer), or create it with `git worktree add --relative-paths`. Setting `git config worktree.useRelativePaths true` once makes every later worktree carry relative linkage from the start.
+- **Relative linkage, under containers.** Under `docker`, `docker-compose`, `vagrant`, and `ddev` the worktree's `.git` file has to carry a relative `gitdir` pointer. `git worktree add` writes an absolute one unless the repository sets `worktree.useRelativePaths`, and an absolute pointer names a host path that does not exist inside a container, so the call is refused. `native` accepts an absolute pointer, because the command runs on the host where the pointer resolves. Relink the worktree with `git -c worktree.useRelativePaths=true worktree repair <worktree-path>` (git 2.48 or newer), or create it with `git worktree add --relative-paths`. Setting `git config worktree.useRelativePaths true` once makes every later worktree carry relative linkage from the start.
 - **Dependency provisioning.** A fresh worktree holds tracked files only, so `vendor/` and `node_modules` are missing and the composer- and npm-backed tools refuse until they exist. Each server's `worktree_prepare` installs its own toolchain's dependencies in the target root through the configured environment: `composer install --no-interaction` on `php-tooling`, `npm ci` in the package directory on `js-admin-tooling` and `js-storefront-tooling`. It takes `project_root` like every other tool and skips the dependency check the other tools run. The JS variants also take `scope` — their install and dependency gate both derive the same package directory through `get_js_workdir`; the PHP variant deliberately does not, because the gate checks `vendor/autoload.php` at the effective root and a scoped install would land where the gate never looks. A successful install returns a short completion summary — the per-package installer output is suppressed — while a failed one returns the full output. Re-run it after the worktree's `composer.json`/`composer.lock` or `package-lock.json` changes — the dependency check only tests that the install directory exists. Admin Jest additionally needs `unit_setup` after the install plus the gitignored `test/_mocks_/entity-schema.json`, which `unit_setup` does not regenerate — dump it with `console_run` on `php-tooling` (env `prod`): `framework:schema -s entity-schema src/Administration/Resources/app/administration/test/_mocks_/entity-schema.json` (the flag is `-s`/`--schema-format`; `--schema` does not exist). `ludtwig` needs `worktree_prepare` on `php-tooling`, not on its own server, because it runs composer. Never symlink `vendor/` from the launch tree instead: composer's autoloaders resolve through the symlink and load the launch tree's classes.
 - **Charset.** A root carrying a single quote or a control character is refused in every environment. Under `docker`, `docker-compose`, `vagrant`, and `ddev`, whitespace and the metacharacter set `$`, backtick, backslash, `"`, `;`, `&`, `|`, `<`, `>`, `(`, `)`, `{`, `}` are refused too — the first three embed the working directory unquoted, and `ddev` parses it a second time inside the container. Glob characters stay admitted.
 - **Existence probe.** After validation the tool checks that the environment reaches the mapped path, through the same wrapper the call uses. A missing directory refuses the call and names the path; a passing result is cached for that server process per environment, root and mapped path, so an edited workdir in a worktree's own configuration probes again.

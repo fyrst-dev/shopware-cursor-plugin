@@ -9,7 +9,7 @@
 #   parse_hook_input
 #   load_mcp_config "php-tooling"  # or "js-tooling"
 #   # ... pattern matching ...
-#   block_tool "phpstan_analyze" "Description"
+#   block_tool "php-tooling" "Description" "phpstan_analyze"
 
 # Global variables set by this library:
 #   COMMAND - The shell command being checked
@@ -103,23 +103,26 @@ load_mcp_config() {
     fi
 }
 
-# Block a tool with formatted message
-# Args: $1 = MCP tool name (e.g., "phpstan_analyze")
+# Block a tool with formatted message.
+# Tool names carry no host prefix. The message names the tool and its server.
+# Args: $1 = MCP server name (e.g., "php-tooling")
 #       $2 = description of what to use instead
+#       $3... = tool names, one or more (e.g., "ecs_check" "ecs_fix")
 # Outputs Cursor deny JSON on stdout, a human message on stderr, exits 2
 block_tool() {
-    local tool="$1"
+    local server="$1"
     local description="$2"
+    shift 2
+
+    local tools="" name
+    for name in "$@"; do
+        tools+="${tools:+ or }\`${name}\`"
+    done
+
     local message
-
-    message="$(cat <<EOF
-Use the ${tool} MCP tool instead.
-
-Bad command detected: ${COMMAND}
-
-${description}
-EOF
-)"
+    message="Use ${tools} on the \`${server}\` MCP server instead!"
+    message+=$'\n\n'"Bad command detected: ${COMMAND}"
+    message+=$'\n\n'"${description}"
 
     if [[ -n "$ENVIRONMENT" ]]; then
         message+=$'\n\n'"MCP tools handle the '${ENVIRONMENT}' environment and project configuration automatically."

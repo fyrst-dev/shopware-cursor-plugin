@@ -24,6 +24,26 @@ teardown() {
     unset CURSOR_PROJECT_DIR
 }
 
+# Run a hook script with the hook input's cwd set. When CURSOR_PROJECT_DIR is
+# unset, the cwd is how the hook names the project.
+# Args: $1 = script name, $2 = bash command, $3 = cwd
+run_hook_with_cwd() {
+    local payload
+    payload=$(jq -cn --arg cmd "$2" --arg cwd "$3" '{tool_input: {command: $cmd}, cwd: $cwd}')
+    run bash -c 'printf "%s" "$1" | bash "$2"' _ "$payload" "${SCRIPTS_DIR}/$1"
+}
+
+# Create a project directory holding an MCP config of the given environment,
+# distinct from the one setup_config writes at BATS_TEST_TMPDIR.
+# Args: $1 = config prefix, $2 = environment
+# Stdout: the project directory
+make_cwd_project() {
+    local dir="${BATS_TEST_TMPDIR}/cwd-project"
+    mkdir -p "$dir"
+    jq -n --arg env "$2" '{environment: $env}' > "${dir}/.mcp-${1}.json"
+    printf '%s\n' "$dir"
+}
+
 # The path $2 relative to the directory $1. Both must be absolute and
 # canonical. No external tool computes this portably — BSD realpath has no
 # --relative-to — and the fixtures below have both sides already.
@@ -187,3 +207,210 @@ setup_php_mcp_env() {
     # shellcheck source=/dev/null  # lib_path is caller-supplied at runtime; each test passes a different tool library
     source "${lib_path}"
 }
+
+# Answer an `npm pkg get "scripts.<name>"` probe the way npm answers it against
+# the Shopware package.json whose "scripts" block the fixture copies verbatim
+# from shopware/shopware trunk (c59a7d3484c): the body as a JSON string, or
+# `{}` for a script the package does not define.
+# Args: $1 = package, "administration" or "storefront", $2 = script name
+# Stdout: the probe answer
+shopware_trunk_script_body() {
+    jq --arg name "$2" 'if has($name) then .[$name] else {} end' \
+        "${BATS_TEST_DIRNAME}/fixtures/shopware-trunk/$1-package-scripts.json"
+}
+
+# The status js_fake_npm_probe returns for a command that is neither probe.
+JS_FAKE_NPM_PROBE_UNHANDLED=125
+
+# The fake exec_npm_command of mcp_tool_js_admin.bats and
+# mcp_tool_js_storefront.bats answers from these variables, set in their setup():
+#   FAKE_ABSENT_SCRIPTS       scripts answered `{}`, as if the package lacked them
+#   FAKE_BODY_NAME, FAKE_BODY one script answered with a different body
+#   FAKE_PROBE_OUTPUT         the answer of the path probe; FAKE_PROBE_FILE records its command
+#   FAKE_CALL_LOG             every wrapped command, in order
+#   FAKE_REPORT_OUTPUT        what a Jest run writes into FAKE_REPORT_STORE, a real file, so
+#                             a report an earlier run left differs from one this run wrote;
+#                             FAKE_RUN_WRITES_REPORT=0 makes the run write none, the clear
+#                             deletes the file and the read returns whatever is there
+#   FAKE_REPORT_READ_FILE     the command that read the report
+#   FAKE_CLEAR_EXIT, FAKE_CLEAR_OUTPUT, FAKE_RUN_EXIT  status and output of the clear and the run
+# The probe variables are listed at js_fake_npm_probe.
+
+# Answer the two probes a path-scoped JS lint runs through `npm exec --no -c`,
+# for an exec_npm_command fake. The directory test runs for real, as sh in the
+# package directory, so it answers about the files a test created. The
+# local-binary probe reports a binary named in FAKE_MISSING_BINARIES missing in
+# the given directory. FAKE_DIRECTORY_PROBE_ERROR and FAKE_BINARY_PROBE_ERROR
+# make the probe fail before it can test anything, such as on a stopped
+# container.
+# Globals: reads FAKE_DIRECTORY_PROBE_ERROR, FAKE_BINARY_PROBE_ERROR,
+#          FAKE_MISSING_BINARIES, BATS_TEST_TMPDIR
+# Args: $1 = the command, $2 = the package directory the binary probe reports,
+#       which under a container is not a host path
+# Returns: the probe's status, or JS_FAKE_NPM_PROBE_UNHANDLED for any other
+#          command
+js_fake_npm_probe() {
+    local cmd="$1"
+    local package_dir="$2"
+
+    case "${cmd}" in
+        'npm exec --no -c "[ -d '*)
+            if [[ -n "${FAKE_DIRECTORY_PROBE_ERROR}" ]]; then
+                printf '%s\n' "${FAKE_DIRECTORY_PROBE_ERROR}"
+                return 1
+            fi
+            # LINT_WORKDIR is empty here: environment.sh resets it when
+            # sourced, and setup() sets it before that.
+            (LINT_WORKDIR="${BATS_TEST_TMPDIR}"; cd "$(get_js_workdir)" 2>/dev/null || true; eval "sh -c ${cmd#npm exec --no -c }")
+            ;;
+        'npm exec --no -c "test -x node_modules/.bin/'*)
+            if [[ -n "${FAKE_BINARY_PROBE_ERROR}" ]]; then
+                printf '%s\n' "${FAKE_BINARY_PROBE_ERROR}"
+                return 1
+            fi
+            local binary="${cmd#npm exec --no -c \"test -x node_modules/.bin/}"
+            case " ${FAKE_MISSING_BINARIES} " in
+                *" ${binary%% *} "*)
+                    printf '%s\n%s\n' "LOCAL_BINARY_MISSING_IN" "${package_dir}"
+                    return 3
+                    ;;
+            esac
+            ;;
+        *)
+            return "${JS_FAKE_NPM_PROBE_UNHANDLED}"
+            ;;
+    esac
+}
+
+# Installs the fake npm in the directory $1. It implements the two `npm exec`
+# forms as npm 11 runs them: `-c` hands the string to sh with the package's
+# node_modules/.bin first on PATH, `--` runs that directory's binary.
+_js_install_fake_npm() {
+    local bin_dir="$1"
+    mkdir -p "${bin_dir}"
+    cat > "${bin_dir}/npm" <<'NPM'
+#!/usr/bin/env bash
+[[ "$1 $2" == "exec --no" ]] || exit 90
+case "$3" in
+    -c) PATH="${PWD}/node_modules/.bin:${PATH}" exec sh -c "$4" ;;
+    --) shift 3; bin="$1"; shift; exec "${PWD}/node_modules/.bin/${bin}" "$@" ;;
+esac
+exit 91
+NPM
+    chmod +x "${bin_dir}/npm"
+}
+
+# Installs each binary named in JS_FAKE_BINARIES (default: eslint, stylelint and
+# prettier) in the package directory $1's node_modules/.bin. A fake prints its
+# working directory, one bracketed line per argument and, for an argument
+# holding `*`, one `match:` line per file the pattern names, as bash expands it
+# with globstar from that directory.
+_js_install_fake_linters() {
+    local package_dir="$1" binary
+    mkdir -p "${package_dir}/node_modules/.bin"
+    for binary in ${JS_FAKE_BINARIES-eslint stylelint prettier}; do
+        cat > "${package_dir}/node_modules/.bin/${binary}" <<'LINTER'
+#!/usr/bin/env bash
+shopt -s globstar nullglob
+printf 'cwd=%s\n' "$(pwd)"
+for arg in "$@"; do printf '[%s]\n' "${arg}"; done
+for arg in "$@"; do
+    [[ "${arg}" == *"*"* ]] || continue
+    eval "matches=( ${arg} )"
+    for match in "${matches[@]}"; do printf 'match:%s\n' "${match}"; done
+done
+LINTER
+        chmod +x "${package_dir}/node_modules/.bin/${binary}"
+    done
+}
+
+# Defines docker, vagrant and ddev as functions doing what each does with its
+# argv. docker and vagrant hand their string to a shell. The ddev shim models
+# ddev/ddev main 94c92c96415f: `ddev npm` is the command file
+# pkg/ddevapp/global_dotddev_assets/commands/web/npm (`## ExecRaw: true`), and
+# cmd/ddev/cmd/commands.go:528 (`opts.RawCmd = append([]string{fullPath},
+# osArgs...)`) hands it argv unchanged; `ddev exec -d` joins argv,
+# double-quoting an argument holding a space, tab, line break, `"` or `#`
+# (quoteArgs), and parses the result with `bash -c` again.
+_js_define_env_shims() {
+    docker() { bash -c "${!#}"; }
+    vagrant() { bash -c "$3"; }
+    ddev() {
+        if [[ "$1" == "npm" ]]; then
+            shift
+            npm "$@"
+            return
+        fi
+        [[ "$1 $2" == "exec -d" ]] || return 92
+        local dir="$3" joined="" arg
+        shift 3
+        for arg in "$@"; do
+            if [[ "${arg}" == *[\"\ $'\t'$'\r'$'\n'\#]* ]]; then
+                arg="\"${arg//\"/\\\"}\""
+            fi
+            joined="${joined:+${joined} }${arg}"
+        done
+        bash -c "cd \"${dir}\" && ( ${joined} )"
+    }
+}
+
+# Runs a command a JS tool built, through the real environment wrapper, with
+# fakes that reproduce each argv-parsing step, so a quoting bug surfaces as it
+# would on the real tool. The docker-compose path builds its wrapper with the
+# real compose module but stubs `_compose_resolve_workdir`, so the real workdir
+# join is not exercised.
+# Globals: reads JS_CONTEXT, PLUGIN_DIR, JS_FAKE_BINARIES
+# Args: $1 = native, docker, docker-compose, vagrant, ddev or ddev-worktree,
+#       $2 = the command
+js_execute_in_env() {
+    local env="$1" cmd="$2"
+
+    # environment.sh resets LINT_WORKDIR when sourced; a tool call rebinds it
+    # through worktree_enter, and this helper calls no tool.
+    LINT_WORKDIR="${BATS_TEST_TMPDIR}"
+    local package_dir bin_dir="${BATS_TEST_TMPDIR}/fake-bin"
+    package_dir=$(get_js_workdir)
+    _js_install_fake_npm "${bin_dir}"
+    _js_install_fake_linters "${package_dir}"
+    _js_define_env_shims
+
+    LINT_ENV="${env}"
+    if [[ "${env}" == "docker-compose" ]]; then
+        # PLUGIN_DIR is set by the test file that loads this helper.
+        # shellcheck source=/dev/null disable=SC2153
+        source "${PLUGIN_DIR}/shared/docker-compose.sh"
+        _compose_check_prerequisites() { return 0; }
+        _compose_resolve_container() { printf '%s\n' "shopware-web-1"; }
+        _compose_resolve_workdir() { printf '%s\n' "${BATS_TEST_TMPDIR}"; }
+    fi
+    if [[ "${env}" == "ddev-worktree" ]]; then
+        LINT_ENV="ddev"
+        WORKTREE_EFFECTIVE_ROOT="${BATS_TEST_TMPDIR}/linked-worktree"
+    fi
+    DOCKER_CONTAINER="web"
+    local wrapped
+    wrapped=$(wrap_npm_command "${cmd}")
+    PATH="${bin_dir}:${PATH}"
+    cd "${package_dir}" || return 93
+    eval "${wrapped}"
+}
+
+# Overrides _env_targets_worktree and LINT_ENV for the rest of the test.
+_as_ddev_worktree_call() {
+    LINT_ENV="ddev"
+    _env_targets_worktree() { return 0; }
+}
+
+# Writes LINT_CONFIG_FILE with scope "plugin-x" carrying a Stylelint config.
+_use_stylelint_scope_config() {
+    cat > "${LINT_CONFIG_FILE}" <<'JSON'
+{"environment":"native","scopes":{"plugin-x":{"cwd":"custom/plugins/X","stylelint":{"config":".stylelintrc.plugin"}}}}
+JSON
+}
+
+# The forms a linter binary takes in a command; BIN stands for its name. The hook
+# suites check every binary in every form: a form missing for one binary fails.
+JS_HOOK_BINARY_FORMS=("npm exec BIN" "npm exec -- BIN" "npm exec --no -- BIN"
+                      "npx BIN" "npx --no-install BIN" "npx -y BIN"
+                      "npx BIN@9.1.0" "npm exec BIN@9.1.0"
+                      "node_modules/.bin/BIN" "./node_modules/.bin/BIN")

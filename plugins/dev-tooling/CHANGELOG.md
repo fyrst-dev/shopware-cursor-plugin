@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.1] - 2026-10-27
+
+### Changed
+- **`set_project_root` with the launch root clears the sticky root.** Naming the root the server started in was refused as a checkout that is not a linked worktree. It now clears the sticky root, the same as omitting `project_root`.
+- **A server started in the plugin directory stays unbound until `set_project_root` binds a project.** `initialize` and `tools/list` still answer. Every other tool refuses until that bind. Cursor starts the servers in the session project, so they stay bound at launch. Export `PROJECT_ROOT` to bind at startup.
+- **Block messages name the tool and its server.** `beforeShellExecution` now says ``Use `phpstan_analyze` on the `php-tooling` MCP server instead!`` and the same shape for the JS servers. The JS hooks also block `npm exec` / `npm x`, a `node_modules/.bin/<binary>` path, an `@version` suffix, and a `-c` / `--call` string that runs the binary.
+- **`jest_run` always runs the package `unit` script.** The `jest:base` route is gone. `ci: true` appends `--ci`. The tool checks its arguments and the `unit` script before it installs dependencies.
+- **`vite_build`, `webpack_build`, `lint_all`, `lint_twig`, `unit_setup`, and `vitest_run` ignore `default_scope`.** They run against the core package. `vitest_run` refuses a plugin scope. `tsc_check` still honors `default_scope` and refuses a plugin scope whose package defines no `lint:types` script. The sessionStart scopes note says so for `js-tooling`.
+- **An absolute `.git` gitdir pointer is accepted under `native`.** The container environments (`docker`, `docker-compose`, `vagrant`, `ddev`) still refuse it, and the worktree reminder names that split. The repair command is unchanged.
+
+### Fixed
+- **Path-scoped Stylelint, Prettier, and ESLint run the package binary.** Calls with `paths` no longer route to `stylelint:base`, `prettier:base`, `eslint:app`, or `eslint:components`, which Shopware's `package.json` files do not define. They run `npm exec --no -- <binary>` with the aggregate script's flags, and refuse when `node_modules/.bin/<binary>` is missing so a global binary cannot run instead. Administration ESLint with `paths` uses the local `eslint` binary the same way. Under a scope, an ESLint path is rebased so a plugin's own `app/administration` or `app/storefront` segment stays.
+- **A config that is present but broken is refused.** `load_config` refuses a file that is not a JSON object, and a `jq` expression that cannot be evaluated returns the `jq` error instead of a default. An environment name outside `native`, `docker`, `docker-compose`, `vagrant`, and `ddev` is refused at startup and at bind. A worktree whose own config cannot be loaded is refused instead of running under the launch root's configuration.
+- **A relative `MCP_PHP_TOOLING_CONFIG` or `MCP_JS_TOOLING_CONFIG` survives a worktree call.** The override is made absolute against the directory the server started in.
+- **PHP tools no longer drop caller values.** `console_run` honors an explicit `false` for `no_debug` and `no_interaction`, passes empty positional arguments through, and refuses an option value that is not a boolean, a string, or an array of strings and numbers. `console_list` returns a failing `bin/console list` with its output. `phpunit_run` accepts any `testsuite` matching `^[A-Za-z0-9_.-]{1,64}$`. `rector_fix` runs `composer rector-fix` when that script exists, and refuses when the only `rector` script carries `--dry-run`.
+- **Hooks find the project from `CURSOR_PROJECT_DIR`, then `workspace_roots` or `cwd`.** Config lookup, the sessionStart scopes section, and the PHPStan baseline warning share that resolution. Config files stay `.cursor/.mcp-*.json` then `.mcp-*.json`.
+
 ## [5.0.0] - 2026-09-19
 
 ### Added
