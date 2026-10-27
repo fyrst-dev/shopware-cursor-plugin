@@ -20,30 +20,6 @@ _refuse_linebreak_args() {
     return 0
 }
 
-# _run_scope_bootstrap <tool>
-# Runs scope.<tool>.bootstrap[] via exec_command in sequence. Any non-zero
-# exit aborts with an MCP-facing error message on stdout. Defined here as a
-# local duplicate of the helper in phpstan.sh so rector.sh works when loaded
-# standalone (e.g. unit tests that source only this file).
-if ! declare -F _run_scope_bootstrap >/dev/null 2>&1; then
-    _run_scope_bootstrap() {
-        local tool="$1"
-        local cmd
-        while IFS= read -r cmd; do
-            [[ -z "${cmd}" ]] && continue
-            log "INFO" "Scope bootstrap [${tool}]: ${cmd}"
-            local output rc=0
-            output=$(exec_command "${cmd}") || rc=$?
-            if [[ "${rc}" -ne 0 ]]; then
-                echo "Scope bootstrap failed for tool '${tool}' (exit ${rc}):"
-                echo "${output}"
-                return 1
-            fi
-        done < <(scope_get_bootstrap "${tool}")
-        return 0
-    }
-fi
-
 # Parse shared Rector arguments from JSON
 # Args: $1 = JSON arguments
 # Sets: output_format, config, only, only_suffix, clear_cache, paths_json, paths
@@ -53,10 +29,10 @@ _parse_rector_args() {
     local args="$1"
 
     local default_config
-    default_config=$(_get_config_value ".rector.config")
+    default_config=$(_get_config_value ".rector.config") || return 1
 
     local scoped_config
-    scoped_config=$(scope_get_tool_field rector config)
+    scope_tool_field_or_refuse scoped_config rector config || return 1
 
     local parsed
     if ! parsed=$(echo "${args}" | jq -c '{
@@ -111,6 +87,34 @@ _parse_rector_args() {
     return 0
 }
 
+# _rector_fix_script
+# Shopware core's "rector" script is a dry run; "rector-fix" is the one that writes files.
+# Globals: reads WORKTREE_EFFECTIVE_ROOT, SCOPE_CWD
+# Stdout: the script name, or a refusal message
+# Returns: 1 when only a dry-run "rector" script exists
+_rector_fix_script() {
+    local composer_file="${WORKTREE_EFFECTIVE_ROOT}"
+    [[ -n "${SCOPE_CWD:-}" ]] && composer_file+="/${SCOPE_CWD}"
+    composer_file+="/composer.json"
+
+    # An unreadable composer.json falls back to "rector"; composer reports the file itself.
+    local script
+    script=$(jq -r '
+        .scripts as $scripts
+        | if ($scripts | type) != "object" then "rector"
+          elif $scripts | has("rector-fix") then "rector-fix"
+          elif ($scripts.rector | tostring | contains("--dry-run")) then "dry-run"
+          else "rector" end
+    ' "${composer_file}" 2>/dev/null) || script=""
+
+    if [[ "${script}" == "dry-run" ]]; then
+        printf '%s\n' "Refusing to run rector_fix: in ${composer_file} its \"rector\" script runs with --dry-run and there is no \"rector-fix\" script, so the run would apply nothing."
+        return 1
+    fi
+
+    printf '%s\n' "${script:-rector}"
+}
+
 # tool_rector_fix - MCP tool function (apply refactorings)
 # Args: $1 = JSON arguments
 # Returns: Rector output (JSON or console)
@@ -130,13 +134,21 @@ tool_rector_fix() {
 
     worktree_assert_dependencies || return 1
 
-    if ! _run_scope_bootstrap rector; then
-        return 1
-    fi
-
     local paths_json paths output_format config only only_suffix clear_cache
 
     _parse_rector_args "${args}" || return 1
+
+    local fix_script
+    if ! fix_script=$(_rector_fix_script); then
+        printf '%s\n' "${fix_script}"
+        return 1
+    fi
+
+    # After every argument guard: the bootstrap runs project commands, so a
+    # refused call must not have run them.
+    if ! _run_scope_bootstrap rector; then
+        return 1
+    fi
 
     log "INFO" "Rector fix: paths='${paths_json}' format='${output_format}' config='${config}' only='${only}' only_suffix='${only_suffix}' clear_cache='${clear_cache}'"
 
@@ -147,7 +159,7 @@ tool_rector_fix() {
     [[ "${clear_cache}" == "true" ]] && flags+=("--clear-cache")
     [[ -n "${paths}" ]] && flags+=("${paths}")
 
-    local cmd="composer rector"
+    local cmd="composer ${fix_script}"
     [[ ${#flags[@]} -gt 0 ]] && cmd="${cmd} -- ${flags[*]}"
 
     exec_command "${cmd}"
@@ -172,13 +184,15 @@ tool_rector_check() {
 
     worktree_assert_dependencies || return 1
 
-    if ! _run_scope_bootstrap rector; then
-        return 1
-    fi
-
     local paths_json paths output_format config only only_suffix clear_cache
 
     _parse_rector_args "${args}" || return 1
+
+    # After every argument guard: the bootstrap runs project commands, so a
+    # refused call must not have run them.
+    if ! _run_scope_bootstrap rector; then
+        return 1
+    fi
 
     log "INFO" "Rector check: paths='${paths_json}' format='${output_format}' config='${config}' only='${only}' only_suffix='${only_suffix}' clear_cache='${clear_cache}'"
 

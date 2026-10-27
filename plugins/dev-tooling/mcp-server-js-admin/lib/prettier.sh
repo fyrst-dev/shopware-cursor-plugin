@@ -36,7 +36,7 @@ _prettier_dispatch_admin() {
     local args="$4"
 
     local scoped_config
-    scoped_config=$(scope_get_tool_field prettier config)
+    scope_tool_field_or_refuse scoped_config prettier config || return 1
 
     local paths_json paths
     paths_json=$(echo "${args}" | jq -c '.paths // []')
