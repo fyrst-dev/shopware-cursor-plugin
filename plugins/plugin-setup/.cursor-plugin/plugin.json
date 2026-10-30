@@ -1,7 +1,7 @@
 {
   "name": "plugin-setup",
-  "version": "2.0.0",
-  "description": "Interactive setup skills for plugins that ship a SETUP.md. Bundles one setting-up skill per supported plugin: dev-tooling, gh-tooling, and chunkhound-integration.",
+  "version": "2.0.1",
+  "description": "Interactive setup skills for plugins that ship a SETUP.md. Bundles one setting-up skill per supported plugin: dev-tooling and chunkhound-integration.",
   "author": {
     "name": "Shopware Labs"
   },
@@ -10,7 +10,6 @@
     "setup",
     "configuration",
     "dev-tooling",
-    "gh-tooling",
     "chunkhound"
   ],
   "homepage": "https://github.com/shopwareLabs/ai-coding-tools/tree/main/plugins/plugin-setup",

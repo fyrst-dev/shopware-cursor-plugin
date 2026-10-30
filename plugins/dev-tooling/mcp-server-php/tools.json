@@ -76,8 +76,8 @@
           },
           "testsuite": {
             "type": "string",
-            "description": "Test suite to run. Falls back to .lintrc.local.json phpunit.testsuite if not provided.",
-            "enum": ["unit", "integration", "migration", "devops", "core-framework-batch1", "core-framework-batch2", "core-framework-batch3"]
+            "pattern": "^[A-Za-z0-9_.-]{1,64}$",
+            "description": "Name of a test suite defined in the PHPUnit configuration, e.g. unit, integration, migration, redis or a suite a plugin defines. Falls back to phpunit.testsuite from the config file if not provided."
           },
           "paths": {
             "type": "array",
@@ -90,7 +90,7 @@
           },
           "config": {
             "type": "string",
-            "description": "PHPUnit config file path. Falls back to .lintrc.local.json phpunit.config if not provided."
+            "description": "PHPUnit config file path. Falls back to phpunit.config from the config file if not provided."
           },
           "stop_on_failure": {
             "type": "boolean",
@@ -179,10 +179,10 @@
               "oneOf": [
                 { "type": "boolean" },
                 { "type": "string" },
-                { "type": "array", "items": { "type": "string" } }
+                { "type": "array", "items": { "type": ["string", "number"] } }
               ]
             },
-            "description": "Command options as key-value pairs. Boolean true = --flag, string = --key=value, array = multiple --key=value"
+            "description": "Command options as key-value pairs. Boolean true = --flag, string = --key=value, array of strings or numbers = multiple --key=value"
           },
           "env": {
             "type": "string",
@@ -191,7 +191,7 @@
           },
           "output_file": {
             "type": "string",
-            "description": "Write the command's stdout to this file instead of returning it. A relative path resolves against the project root; parent directories are created. The response then carries the resolved path, the byte count and the exit status, plus stderr. Refused when longer than 4096 bytes, or when the target exists as a symlink or a non-regular file. On a failed command the file is left untouched and stdout comes back in the response."
+            "description": "Write the command's stdout to this file instead of returning it. A relative path resolves against the project root; an absolute path is accepted and written as given, inside or outside the project root; parent directories are created. The response then carries the resolved path, the byte count and the exit status, plus stderr. Refused when longer than 4096 bytes, when the final path component is .git, or when the target exists as a symlink or a non-regular file. On a failed command the file is left untouched and stdout comes back in the response."
           },
           "feature_all": {
             "type": "string",
@@ -249,7 +249,7 @@
     },
     {
       "name": "rector_fix",
-      "description": "Rector refactoring. Detects and applies code transformations in one step. Preferred over rector_check — shows diffs AND applies them.",
+      "description": "Rector refactoring. Detects and applies code transformations in one step. Preferred over rector_check — shows diffs AND applies them. Runs composer rector-fix when composer.json defines that script, otherwise composer rector; refuses when there is no rector-fix script and the rector script passes --dry-run, since that run would apply nothing.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -353,13 +353,13 @@
     },
     {
       "name": "set_project_root",
-      "description": "Set the project root every later call on this server targets, or clear it. Pass a linked git worktree of the root the server was launched in to move the server onto that tree; omit project_root to return it to the launch root. Each of php-tooling, js-admin-tooling and js-storefront-tooling is a separate process and keeps its own setting, so call this on each server you use.",
+      "description": "Set the project root every later call on this server targets, or clear it. A server started in a project directory is bound to it as its launch root: pass a linked git worktree of that root to move the server onto that tree, and omit project_root, or pass the launch root itself, to return it to the launch root. A server started in its own plugin directory, when the process was started in that directory, has no project root, and every tool except cwd refuses until this is called with the absolute path of the project; that binds the server to it as its launch root for the rest of the process, and calling it again with that path clears any sticky worktree, the same as omitting project_root. Each of php-tooling, js-admin-tooling and js-storefront-tooling is a separate process and keeps its own setting, so call this on each server you use.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "project_root": {
             "type": "string",
-            "description": "Absolute path to a linked git worktree of the root this server was launched in. Omit to clear the setting and return the server to its launch root; the value being discarded is not validated, so this also recovers from a worktree that has been removed. Works in every environment: the call runs against that tree as the server's environment reaches it, and under docker, docker-compose, vagrant and ddev the worktree must sit inside the launch project root, which is the only tree the container or VM mounts."
+            "description": "Absolute path. On a server with no project root yet: the project to bind, which must hold this server's .mcp-php-tooling.json at its top or in a supported tool directory such as .claude/, unless MCP_PHP_TOOLING_CONFIG names the configuration file. Otherwise: a linked git worktree of the root this server was launched in. Omit it, or pass the launch root itself, to clear the setting and return the server to its launch root; the value being discarded is not validated, so this also recovers from a worktree that has been removed. Works in every environment: the call runs against that tree as the server's environment reaches it, and under docker, docker-compose, vagrant and ddev the worktree must sit inside the launch project root, which is the only tree the container or VM mounts."
           }
         },
         "additionalProperties": false

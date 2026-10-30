@@ -3,14 +3,12 @@
 # Provides jest_run MCP tool
 # Note: watch mode is not supported - long-running processes hang MCP servers
 #
-# Runs route at the target-less npm script "jest:base". The aggregate "unit"
-# script is `npm run jest:base -- --ci`, and jest.config.ts derives
-# `isCi` from an exact `--ci` match in process.argv: it then sets
-# `collectCoverage: isCi` and swaps the reporters for jest-silent-reporter plus
-# jest-junit. Routing at "unit" therefore forces coverage on every run and
-# suppresses the per-test and summary output the caller asked for, and
-# appending `--ci=false` does not undo it because the literal `--ci` is still
-# in argv. The `ci` argument puts that mode back under the caller's control.
+# Every run is the npm script "unit", `jest --config jest.config.js --ci`, with
+# the caller's arguments appended. jest.config.ts, which jest.config.js loads,
+# derives `isCi` from an exact `--ci` match in process.argv and then sets
+# `collectCoverage: isCi`, so coverage is collected on every run. The `ci`
+# argument appends `--ci`, which core's "unit" already passes, so neither it
+# nor `coverage` changes a run of the core Administration.
 #
 # The tool's result comes from Jest's own JSON report, not from the process
 # exit code. The exit code answers "did the jest process end cleanly", which is
@@ -34,8 +32,7 @@
 # /tmp between runs. That is deliberate and costs a round-trip less than a
 # post-run delete would.
 
-ADMIN_JEST_BASE_SCRIPT="jest:base"
-ADMIN_JEST_AGGREGATE_SCRIPT="unit"
+ADMIN_JEST_SCRIPT="unit"
 
 # Per-server, per-process report path. Requests into one stdio MCP server are
 # handled sequentially, so a single server never has two runs in flight; the
@@ -59,18 +56,26 @@ if ! declare -F _jest_scope_env_prefix >/dev/null; then
         [[ "${SCOPE_NAME:-shopware}" == "shopware" ]] && return 0
         [[ -f "${LINT_CONFIG_FILE:-}" ]] || return 0
 
-        if jq -e --arg name "${SCOPE_NAME}" \
+        local has_linebreak
+        if ! has_linebreak=$(jq -r --arg name "${SCOPE_NAME}" \
             '(.scopes[$name].jest.env // {}) | to_entries | any(.[];
                 (.key + "=" + (.value | tostring)) | (index("\n") != null) or (index("\r") != null))' \
-            "${LINT_CONFIG_FILE}" >/dev/null 2>&1; then
+            "${LINT_CONFIG_FILE}" 2>&1); then
+            printf '%s\n' "${has_linebreak}"
+            return 1
+        fi
+        if [[ "${has_linebreak}" == "true" ]]; then
             printf '%s\n' "Refusing to run: scope \"${SCOPE_NAME}\" declares a jest.env entry containing a line break, which cannot be embedded in a single command."
             return 1
         fi
 
         local raw
-        raw=$(jq -r --arg name "${SCOPE_NAME}" \
+        if ! raw=$(jq -r --arg name "${SCOPE_NAME}" \
             '(.scopes[$name].jest.env // {}) | to_entries[] | "\(.key)=\(.value)"' \
-            "${LINT_CONFIG_FILE}" 2>/dev/null) || return 0
+            "${LINT_CONFIG_FILE}" 2>&1); then
+            printf '%s\n' "${raw}"
+            return 1
+        fi
 
         local prefix="" entry
         while IFS= read -r entry; do
@@ -88,7 +93,12 @@ if ! declare -F _jest_install_if_missing >/dev/null; then
     _jest_install_if_missing() {
         [[ "${SCOPE_NAME:-shopware}" == "shopware" ]] && return 0
         local flag
-        flag=$(jq -r --arg name "${SCOPE_NAME}" '.scopes[$name].jest.install_if_missing // false' "${LINT_CONFIG_FILE}" 2>/dev/null || echo "false")
+        if ! flag=$(jq -r --arg name "${SCOPE_NAME}" \
+            '(.scopes[$name].jest // {}) | if has("install_if_missing") then .install_if_missing | if type == "boolean" then tostring else error("scopes." + $name + ".jest.install_if_missing must be a boolean (found " + type + ")") end else "false" end' \
+            "${LINT_CONFIG_FILE}" 2>&1); then
+            printf '%s\n' "${flag}"
+            return 1
+        fi
         [[ "${flag}" != "true" ]] && return 0
 
         # The [[ -d ]] runs on the HOST, so it has to measure a host path:
@@ -258,17 +268,11 @@ tool_jest_run() {
         return 1
     fi
 
+    # shellcheck disable=SC2034  # read by get_js_workdir in shared/environment.sh
     SCOPE_JS_SUBDIR=""
     if [[ "${SCOPE_NAME}" != "shopware" ]]; then
-        # shellcheck disable=SC2034  # read by get_js_workdir in shared/environment.sh
-        SCOPE_JS_SUBDIR=$(scope_get_tool_field jest cwd)
+        scope_tool_field_or_refuse SCOPE_JS_SUBDIR jest cwd || return 1
     fi
-
-    _jest_install_if_missing || return 1
-
-    # After the opt-in install, which is what creates the node_modules this
-    # check would otherwise refuse the run over.
-    worktree_assert_dependencies || return 1
 
     local env_prefix
     env_prefix=$(_jest_scope_env_prefix) || { printf '%s\n' "${env_prefix}"; return 1; }
@@ -298,51 +302,36 @@ tool_jest_run() {
         return 1
     fi
 
+    # The gate reads only package.json, so it needs no installed dependencies.
+    local body
+    if ! body=$(npm_script_append_gate "${ADMIN_JEST_SCRIPT}"); then
+        printf '%s\n' "${body}"
+        return 1
+    fi
+
+    # After every refusal above, so a refused call installs nothing.
+    _jest_install_if_missing || return 1
+
+    # After the opt-in install, which is what creates the node_modules this
+    # check would otherwise refuse the run over.
+    worktree_assert_dependencies || return 1
+
     local -a flags=()
 
     [[ -n "${test_path_pattern}" ]] && flags+=("--testPathPatterns=$(shell_quote_arg "${test_path_pattern}")")
     [[ -n "${test_name_pattern}" ]] && flags+=("--testNamePattern=$(shell_quote_arg "${test_name_pattern}")")
     [[ "${coverage}" == "true" ]] && flags+=("--coverage")
     [[ "${update_snapshots}" == "true" ]] && flags+=("--updateSnapshot")
+    # A plugin package's "unit" may lack the --ci that core's carries; Jest
+    # accepts the flag twice.
+    [[ "${ci}" == "true" ]] && flags+=("--ci")
 
-    local body
-    local gate_code=0
-    body=$(npm_script_append_gate "${ADMIN_JEST_BASE_SCRIPT}") || gate_code=$?
-
-    local script="${ADMIN_JEST_BASE_SCRIPT}"
-
-    if [[ "${gate_code}" -ne 0 ]]; then
-        # Degraded route, announced rather than silent. No path widening is at
-        # stake here — "unit" runs the same suite — so falling back is better
-        # than refusing, but the caller has to know which arguments the
-        # fallback overrides.
-        script="${ADMIN_JEST_AGGREGATE_SCRIPT}"
-        printf '%s\n' "Notice: the npm script \"${ADMIN_JEST_BASE_SCRIPT}\" is unavailable, so this run falls back to \"${ADMIN_JEST_AGGREGATE_SCRIPT}\", whose body hardcodes --ci. Consequences: the \"ci\" argument is ignored and CI mode is forced; coverage is collected regardless of the \"coverage\" argument, because jest.config.ts sets collectCoverage from that same --ci; and the reporters are swapped to jest-silent-reporter plus jest-junit, so the per-test lines and the summary are suppressed. Reason: ${body}"
-    elif [[ "${ci}" == "true" ]]; then
-        # Only the base script needs this appended; the aggregate already
-        # carries --ci in its body.
-        flags+=("--ci")
-    fi
-
-    # Every route asks for the report, the fallback and the CI route included:
-    # those are the routes where the silent reporter suppresses Jest's own
-    # "Tests:" line, so the report is the only place the counts exist.
+    # Under core's "unit" --ci, jest.config.ts swaps the reporters for
+    # jest-silent-reporter, which suppresses Jest's own "Tests:" line, so the
+    # report is the only place the counts exist.
     flags+=("--json" "--outputFile=$(shell_quote_arg "${ADMIN_JEST_REPORT_FILE}")")
 
-    local cmd="npm run ${script}"
-
-    # The base script already passed the gate above; only the fallback still
-    # needs one before anything is appended to it.
-    if [[ "${script}" == "${ADMIN_JEST_AGGREGATE_SCRIPT}" ]]; then
-        local aggregate_body
-        local aggregate_gate=0
-        aggregate_body=$(npm_script_append_gate "${script}") || aggregate_gate=$?
-        if [[ "${aggregate_gate}" -ne 0 ]]; then
-            printf '%s\n' "${aggregate_body}"
-            return 1
-        fi
-    fi
-    cmd="${cmd} -- ${flags[*]}"
+    local cmd="npm run ${ADMIN_JEST_SCRIPT} -- ${flags[*]}"
 
     [[ -n "${env_prefix}" ]] && cmd="${env_prefix} ${cmd}"
 
@@ -356,7 +345,7 @@ tool_jest_run() {
         return 1
     fi
 
-    log "INFO" "Running Jest tests (admin, ${script}): ${cmd}"
+    log "INFO" "Running Jest tests (admin): ${cmd}"
 
     local output
     local run_exit=0

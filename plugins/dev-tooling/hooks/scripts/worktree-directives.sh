@@ -72,7 +72,7 @@ _emit_enter_message() {
     fi
     case "$gitdir_line" in
         "gitdir: /"*)
-            message="${message} This worktree's \".git\" file carries an absolute gitdir pointer, which the dev-tooling servers refuse in every environment; relink it first with \`git -c worktree.useRelativePaths=true worktree repair \"${worktree_path}\"\` (needs git 2.48 or newer)."
+            message="${message} This worktree's \".git\" file carries an absolute gitdir pointer, which the dev-tooling servers refuse under the docker, docker-compose, vagrant and ddev environments (native accepts it); under those, relink it first with \`git -c worktree.useRelativePaths=true worktree repair \"${worktree_path}\"\` (needs git 2.48 or newer)."
             ;;
     esac
 

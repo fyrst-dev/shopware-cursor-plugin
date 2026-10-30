@@ -222,10 +222,10 @@ tool_console_run() {
     worktree_assert_dependencies || return 1
 
     local default_env default_verbosity default_no_debug default_no_interaction
-    default_env=$(_get_config_value ".console.env")
-    default_verbosity=$(_get_config_value ".console.verbosity")
-    default_no_debug=$(_get_config_value ".console.no_debug")
-    default_no_interaction=$(_get_config_value ".console.no_interaction")
+    default_env=$(_get_config_value ".console.env") || return 1
+    default_verbosity=$(_get_config_value ".console.verbosity") || return 1
+    default_no_debug=$(_get_config_value ".console.no_debug") || return 1
+    default_no_interaction=$(_get_config_value ".console.no_interaction") || return 1
 
     local parsed
     if ! parsed=$(echo "${args}" | jq -c '{
@@ -234,8 +234,8 @@ tool_console_run() {
         options: (.options // {}),
         env: (.env // null),
         verbosity: (.verbosity // null),
-        no_debug: (.no_debug // null),
-        no_interaction: (.no_interaction // null),
+        no_debug: .no_debug,
+        no_interaction: .no_interaction,
         output_file: (.output_file // null),
         feature_all: (.feature_all // null)
     }' 2>/dev/null); then
@@ -249,8 +249,10 @@ tool_console_run() {
     options_json=$(echo "${parsed}" | jq -c '.options')
     env=$(echo "${parsed}" | jq -r '.env // empty')
     verbosity=$(echo "${parsed}" | jq -r '.verbosity // empty')
-    no_debug=$(echo "${parsed}" | jq -r '.no_debug // empty')
-    no_interaction=$(echo "${parsed}" | jq -r '.no_interaction // empty')
+    # "// empty" would read an explicit false as absent and let the configured
+    # default override it.
+    no_debug=$(echo "${parsed}" | jq -r '.no_debug | select(. != null)')
+    no_interaction=$(echo "${parsed}" | jq -r '.no_interaction | select(. != null)')
     output_file=$(echo "${parsed}" | jq -r '.output_file // empty')
     feature_all=$(echo "${parsed}" | jq -r '.feature_all // empty')
 
@@ -281,7 +283,7 @@ tool_console_run() {
     local -a arg_array=()
     if [[ "${arguments_json}" != "[]" ]]; then
         while IFS= read -r a; do
-            [[ -n "${a}" ]] && arg_array+=("${a}")
+            arg_array+=("${a}")
         done < <(echo "${arguments_json}" | jq -r '.[]' 2>/dev/null)
     fi
 
@@ -355,6 +357,12 @@ tool_console_run() {
                     flags+=("--${quoted_key}=$(shell_quote_arg "${value}")")
                     ;;
                 array)
+                    local element_type
+                    element_type=$(echo "${options_json}" | jq -r --arg k "${key}" '[.[$k][] | type | select(. != "string" and . != "number")] | first // empty')
+                    if [[ -n "${element_type}" ]]; then
+                        printf '%s\n' "Refusing to run: console option \"${key}\" holds a ${element_type} element; an array value may hold only strings and numbers."
+                        return 1
+                    fi
                     local arr_val
                     while IFS= read -r arr_val; do
                         if ! guard=$(assert_no_shell_hostile_chars "console option value" "${arr_val}"); then
@@ -363,6 +371,11 @@ tool_console_run() {
                         fi
                         flags+=("--${quoted_key}=$(shell_quote_arg "${arr_val}")")
                     done < <(echo "${options_json}" | jq -r --arg k "${key}" '.[$k][]' 2>/dev/null)
+                    ;;
+                *)
+                    # The vendored validator does not enforce the oneOf on "options".
+                    printf '%s\n' "Refusing to run: console option \"${key}\" has type ${value_type}; only boolean, string and array values are allowed."
+                    return 1
                     ;;
             esac
         done < <(echo "${options_json}" | jq -r 'keys[]' 2>/dev/null)
@@ -457,20 +470,32 @@ tool_console_list() {
 
     # The namespace passed the character allowlist above, so it needs no
     # further guard; it is still quoted so the wrappers see one argument.
+    local -a flags=("list")
+    [[ -n "${namespace}" ]] && flags+=("$(shell_quote_arg "${namespace}")")
+
     if [[ "${format}" != "llm" ]]; then
-        local -a flags=("list")
-        [[ -n "${namespace}" ]] && flags+=("$(shell_quote_arg "${namespace}")")
         flags+=("--format=$(shell_quote_arg "${format}")")
         exec_command "bin/console ${flags[*]}"
         return
     fi
 
-    local -a flags=("list")
-    [[ -n "${namespace}" ]] && flags+=("$(shell_quote_arg "${namespace}")")
     flags+=("--format=json")
 
-    local raw_output
-    raw_output=$(exec_command "bin/console ${flags[*]}")
+    # A failed command or non-JSON output must reach the caller as it is: the
+    # formatter would turn either into empty output.
+    local raw_output rc=0
+    raw_output=$(exec_command "bin/console ${flags[*]}") || rc=$?
+    if [[ "${rc}" -ne 0 ]]; then
+        printf '%s\n' "${raw_output}"
+        return "${rc}"
+    fi
 
-    _format_console_list_llm "${raw_output}"
+    local formatted
+    if ! formatted=$(_format_console_list_llm "${raw_output}"); then
+        printf '%s\n' "The output of bin/console list is not the expected JSON; raw output follows."
+        printf '%s\n' "${raw_output}"
+        return 1
+    fi
+
+    printf '%s\n' "${formatted}"
 }

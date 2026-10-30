@@ -23,18 +23,22 @@ _refuse_linebreak_args() {
     return 0
 }
 
-# _style_backend -> echoes "ecs" or "php-cs-fixer"
+# _style_backend -> echoes "ecs" or "php-cs-fixer"; refuses any other configured backend.
 _style_backend() {
     local b
-    b=$(scope_get_tool_field style tool)
-    [[ -n "${b}" ]] && echo "${b}" || echo "ecs"
+    scope_tool_field_or_refuse b style tool || return 1
+    case "${b}" in
+        '') printf '%s\n' 'ecs' ;;
+        ecs|php-cs-fixer) printf '%s\n' "${b}" ;;
+        *) printf '%s\n' "Refusing to run: style.tool '${b}' must be ecs or php-cs-fixer."; return 1 ;;
+    esac
 }
 
-# _style_config_default -> echoes scope.style.config or .ecs.config
+# _style_config_default -> echoes scope.style.config or .ecs.config; refuses an unreadable value.
 _style_config_default() {
     local c
-    c=$(scope_get_tool_field style config)
-    [[ -n "${c}" ]] && { echo "${c}"; return; }
+    scope_tool_field_or_refuse c style config || return 1
+    [[ -n "${c}" ]] && { echo "${c}"; return 0; }
     _get_config_value ".ecs.config"
 }
 
@@ -56,8 +60,14 @@ tool_ecs_check() {
     worktree_assert_dependencies || return 1
 
     local default_config backend
-    default_config=$(_style_config_default)
-    backend=$(_style_backend)
+    if ! default_config=$(_style_config_default); then
+        printf '%s\n' "${default_config}"
+        return 1
+    fi
+    if ! backend=$(_style_backend); then
+        printf '%s\n' "${backend}"
+        return 1
+    fi
 
     local parsed
     if ! parsed=$(echo "${args}" | jq -c '{
@@ -135,8 +145,14 @@ tool_ecs_fix() {
     worktree_assert_dependencies || return 1
 
     local default_config backend
-    default_config=$(_style_config_default)
-    backend=$(_style_backend)
+    if ! default_config=$(_style_config_default); then
+        printf '%s\n' "${default_config}"
+        return 1
+    fi
+    if ! backend=$(_style_backend); then
+        printf '%s\n' "${backend}"
+        return 1
+    fi
 
     local parsed
     if ! parsed=$(echo "${args}" | jq -c '{

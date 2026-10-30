@@ -52,7 +52,7 @@ plugin-tests/
 ├── test_helper/
 │   └── common_setup.bash               # Shared core fixtures
 ├── mcp-shared/                          # Suites for templates/mcp-shared/ modules
-│   ├── config.bats                      # Config filename and env-var prefix parameterization
+│   ├── config.bats                      # Config filename and env-var derivation from CONFIG_PREFIX
 │   ├── docker_compose.bats             # Docker Compose call-time container/workdir resolution
 │   ├── environment.bats                 # Environment wrapping
 │   └── scope_wrap.bats                 # Scope-aware command wrapping per environment
@@ -93,6 +93,7 @@ plugin-tests/
 ├── shopware-env/
 │   ├── config_fallback.bats
 │   ├── hook_enforcement.bats
+│   ├── lifecycle_startup.bats
 │   ├── lifecycle_tools.bats
 │   ├── session_start.bats
 │   └── test_helper/
@@ -177,7 +178,7 @@ The MCP protocol handler (`plugins/*/shared/mcpserver_core.sh`) has no suite her
 
 ## 🔄 CI
 
-Tests run via GitHub Actions (`.github/workflows/ci.yml`) on changes to `plugins/**`, `plugin-tests/**`, `pyproject.toml`, `uv.lock`, `.shellcheckrc`, `.github/workflows/ci.yml`, or `.github/scripts/**`.
+Tests run via GitHub Actions (`.github/workflows/ci.yml`) on changes to `plugins/**`, `plugin-tests/**`, `pyproject.toml`, `uv.lock`, `.mcp-sdk.lock`, `.shellcheckrc`, `.github/workflows/ci.yml`, or `.github/scripts/**`.
 
 ## 📌 Dependencies
 

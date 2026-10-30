@@ -2,7 +2,7 @@
   "tools": [
     {
       "name": "eslint_check",
-      "description": "ESLint code quality check (dry-run). Returns violations. Runs in Storefront context. Routes each path to the app tree (eslint:app) or the components tree (eslint:components) and runs both when both are targeted.",
+      "description": "ESLint code quality check (dry-run). Returns violations. Runs in Storefront context. Routes each path at or below views/components to the components tree and every other path to the app tree, and runs both when both are targeted. Components-tree paths are refused under any scope other than \"shopware\", because that tree belongs to the core Storefront package.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -15,7 +15,7 @@
             "items": {
               "type": "string"
             },
-            "description": "File paths or directories to lint. Three forms are accepted per path: repo-root-relative (\"src/Storefront/Resources/views/components/...\" or \"src/Storefront/Resources/app/storefront/...\"), tree-relative (\"views/components/...\" for the components tree, \"src/...\" or \"build/...\" for the app tree), and a path already carrying the package prefix. A path containing \"views/components/\" is linted as a component; everything else as app code. Omit to lint both trees via lint:js."
+            "description": "File paths or directories to lint. Three forms are accepted per path: repo-root-relative (\"src/Storefront/Resources/views/components/...\" or \"src/Storefront/Resources/app/storefront/...\"), tree-relative (\"views/components/...\" for the components tree, \"src/...\" or \"build/...\" for the app tree), and a path already carrying the package prefix (\"app/storefront/...\", unscoped runs only: under a scope only the scope cwd prefix is stripped, so this form stays as written and is refused as missing). A path containing \"views/components/\" is linted as a component; everything else as app code. Omit to lint both trees via lint:js."
           },
           "output_format": {
             "type": "string",
@@ -36,7 +36,7 @@
     },
     {
       "name": "eslint_fix",
-      "description": "ESLint auto-fix. Applies code style fixes in Storefront context. Routes each path to the app tree (eslint:app) or the components tree (eslint:components) and runs both when both are targeted.",
+      "description": "ESLint auto-fix. Applies code style fixes in Storefront context. Routes each path at or below views/components to the components tree and every other path to the app tree, and runs both when both are targeted. Components-tree paths are refused under any scope other than \"shopware\", because that tree belongs to the core Storefront package.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -49,7 +49,7 @@
             "items": {
               "type": "string"
             },
-            "description": "File paths or directories to fix. Three forms are accepted per path: repo-root-relative (\"src/Storefront/Resources/views/components/...\" or \"src/Storefront/Resources/app/storefront/...\"), tree-relative (\"views/components/...\" for the components tree, \"src/...\" or \"build/...\" for the app tree), and a path already carrying the package prefix. A path containing \"views/components/\" is fixed as a component; everything else as app code. Omit to fix both trees via lint:js:fix."
+            "description": "File paths or directories to fix. Three forms are accepted per path: repo-root-relative (\"src/Storefront/Resources/views/components/...\" or \"src/Storefront/Resources/app/storefront/...\"), tree-relative (\"views/components/...\" for the components tree, \"src/...\" or \"build/...\" for the app tree), and a path already carrying the package prefix (\"app/storefront/...\", unscoped runs only: under a scope only the scope cwd prefix is stripped, so this form stays as written and is refused as missing). A path containing \"views/components/\" is fixed as a component; everything else as app code. Omit to fix both trees via lint:js:fix."
           },
           "scope": {
             "type": "string",
@@ -140,7 +140,7 @@
           "coverage": {
             "type": "boolean",
             "default": false,
-            "description": "Generate code coverage report"
+            "description": "Append --coverage. The core Storefront collects coverage on every run regardless: its Jest config sets collectCoverage: true."
           },
           "updateSnapshots": {
             "type": "boolean",
@@ -150,7 +150,7 @@
           "ci": {
             "type": "boolean",
             "default": false,
-            "description": "Run Jest in CI mode (--ci). Defaults to false. Turning it on stops Jest writing snapshots that do not exist yet, which it would otherwise do by default. It does not cancel out \"updateSnapshots\": passing that resolves the snapshot mode to \"all\" whether or not CI mode is on, so snapshots are still written. Coverage is unaffected: the Storefront Jest config collects it unconditionally. Leave it off unless you need CI-identical behavior."
+            "description": "Append --ci to the run. The core Storefront's npm script \"unit\" already passes --ci, so a run under scope \"shopware\" is in CI mode either way. A plugin scope's own \"unit\" script runs in CI mode when it passes --ci itself or when this is set. In CI mode Jest writes no missing snapshot unless \"updateSnapshots\" is set."
           },
           "scope": {
             "type": "string",
@@ -193,7 +193,7 @@
           },
           "scope": {
             "type": "string",
-            "description": "Scope name from .mcp-js-tooling.json. Omit to use the configured default_scope. Pass \"shopware\" to force project-root behavior."
+            "description": "Only \"shopware\" is accepted. The component suite belongs to the core Storefront and always runs from the project root: omitting scope runs it there regardless of the configured default_scope, and any plugin scope is refused."
           }
         },
         "additionalProperties": false
@@ -248,7 +248,7 @@
           },
           "scope": {
             "type": "string",
-            "description": "Scope name from .mcp-js-tooling.json. Omit to use the configured default_scope. Pass \"shopware\" to force project-root behavior."
+            "description": "Scope name from .mcp-js-tooling.json. Omit, or pass \"shopware\", to run in the core Storefront package: this tool ignores default_scope."
           }
         },
         "additionalProperties": false
@@ -274,13 +274,13 @@
     },
     {
       "name": "set_project_root",
-      "description": "Set the project root every later call on this server targets, or clear it. Pass a linked git worktree of the root the server was launched in to move the server onto that tree; omit project_root to return it to the launch root. Each of php-tooling, js-admin-tooling and js-storefront-tooling is a separate process and keeps its own setting, so call this on each server you use.",
+      "description": "Set the project root every later call on this server targets, or clear it. A server started in a project directory is bound to it as its launch root: pass a linked git worktree of that root to move the server onto that tree, and omit project_root, or pass the launch root itself, to return it to the launch root. A server started in its own plugin directory, when the process was started in that directory, has no project root, and every tool except cwd refuses until this is called with the absolute path of the project; that binds the server to it as its launch root for the rest of the process, and calling it again with that path clears any sticky worktree, the same as omitting project_root. Each of php-tooling, js-admin-tooling and js-storefront-tooling is a separate process and keeps its own setting, so call this on each server you use.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "project_root": {
             "type": "string",
-            "description": "Absolute path to a linked git worktree of the root this server was launched in. Omit to clear the setting and return the server to its launch root; the value being discarded is not validated, so this also recovers from a worktree that has been removed. Works in every environment: the call runs against that tree as the server's environment reaches it, and under docker, docker-compose, vagrant and ddev the worktree must sit inside the launch project root, which is the only tree the container or VM mounts."
+            "description": "Absolute path. On a server with no project root yet: the project to bind, which must hold this server's .mcp-js-tooling.json at its top or in a supported tool directory such as .claude/, unless MCP_JS_TOOLING_CONFIG names the configuration file. Otherwise: a linked git worktree of the root this server was launched in. Omit it, or pass the launch root itself, to clear the setting and return the server to its launch root; the value being discarded is not validated, so this also recovers from a worktree that has been removed. Works in every environment: the call runs against that tree as the server's environment reaches it, and under docker, docker-compose, vagrant and ddev the worktree must sit inside the launch project root, which is the only tree the container or VM mounts."
           }
         },
         "additionalProperties": false

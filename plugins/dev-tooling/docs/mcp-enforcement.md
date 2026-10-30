@@ -8,7 +8,7 @@ MCP is a synchronous request-response protocol. A long-running watcher like `npm
 
 ## 🛡️ Enforcement Hooks
 
-Three hooks work together. A **sessionStart** hook injects a directive at the top of every conversation that lists the available MCP tools and tells the agent to prefer them over bash; the prompt lives in `hooks/prompts/mcp-tool-directives.md` if you want to read or tweak it. A **beforeShellExecution** hook is the safety net: it intercepts bash commands that map to a known MCP tool and points the agent at the replacement, so even if the sessionStart directive got ignored or compacted away, the bad call gets caught before it runs. The same event also runs `worktree-directives.sh` on `git worktree add` and `git worktree remove`, reminding the session to call `set_project_root` on all three servers, since each holds its own sticky root. A **postToolUse** hook watches `phpstan_analyze`. When it runs against specific files, it cross-references `phpstan-baseline.neon` (or `.php`) and surfaces a warning if any of the analyzed paths appear in the baseline, which usually means a baseline entry has gone stale. Full-project PHPStan runs skip the check because PHPStan validates the baseline natively there.
+Three hooks work together. A **sessionStart** hook injects a directive at the top of every conversation that lists the available MCP tools and tells the agent to prefer them over bash; the prompt lives in `hooks/prompts/mcp-tool-directives.md` if you want to read or tweak it. A **beforeShellExecution** hook is the safety net: it intercepts bash commands that map to a known MCP tool and points the agent at the replacement, so even if the sessionStart directive got ignored or compacted away, the bad call gets caught before it runs. The block message names the tool and its server (`Use \`phpstan_analyze\` on the \`php-tooling\` MCP server instead!`). The same event also runs `worktree-directives.sh` on `git worktree add` and `git worktree remove`, reminding the session to call `set_project_root` on all three servers, since each holds its own sticky root. A **postToolUse** hook watches `phpstan_analyze`. When it runs against specific files, it cross-references `phpstan-baseline.neon` (or `.php`) and surfaces a warning if any of the analyzed paths appear in the baseline, which usually means a baseline entry has gone stale. Full-project PHPStan runs skip the check because PHPStan validates the baseline natively there.
 
 The sessionStart directive and the MCP-enforcement beforeShellExecution hooks honor `enforce_mcp_tools` and turn off when it's `false`. The worktree-directives reminder and the postToolUse baseline check ignore the flag and always run.
 
@@ -22,61 +22,69 @@ Flip the switch per config file (`.mcp-php-tooling.json` or `.mcp-js-tooling.jso
 
 ### Blocked PHP Commands
 
-| Bash Command                                                | MCP Tool                                         |
-|-------------------------------------------------------------|--------------------------------------------------|
-| `vendor/bin/phpstan`, `composer phpstan`                    | `mcp__php-tooling__phpstan_analyze`              |
-| `vendor/bin/ecs`, `vendor/bin/php-cs-fixer`, `composer ecs` | `mcp__php-tooling__ecs_check` / `ecs_fix`        |
-| `vendor/bin/phpunit`, `composer phpunit`                    | `mcp__php-tooling__phpunit_run`                  |
-| `bin/console`, `php bin/console`                            | `mcp__php-tooling__console_run` / `console_list` |
-| `vendor/bin/rector`, `composer rector`                      | `mcp__php-tooling__rector_fix` / `rector_check`  |
+| Bash Command                                                       | MCP Tool on `php-tooling`      |
+|--------------------------------------------------------------------|--------------------------------|
+| `vendor/bin/phpstan`, `composer phpstan`                           | `phpstan_analyze`              |
+| `vendor/bin/ecs`, `vendor/bin/php-cs-fixer`, `composer ecs`        | `ecs_check` / `ecs_fix`        |
+| `vendor/bin/phpunit`, `composer phpunit`                           | `phpunit_run`                  |
+| `bin/console`, `php bin/console`                                   | `console_run` / `console_list` |
+| `vendor/bin/rector`, `composer rector`, `composer rector-fix`      | `rector_fix` / `rector_check`  |
 
 ### Blocked JavaScript Commands
 
-The JS hook picks Admin vs Storefront from the command itself and redirects to the matching server. Detection is by path pattern first, then by scripts that only exist on one side — `lint:js`, `production`, `development`, `unit:components`, `eslint:app`, `eslint:components` and `stylelint:app` for Storefront, plus a bare `ludtwig`, which lints Storefront Twig templates and nothing else. `jest:base` is declared by both `package.json` files and carries no side-specific marker, so it cannot be classified this way: a command that also names the Storefront tree (path pattern or another Storefront-only script) is claimed by the Storefront hook, and every other `jest:base` invocation — including a bare one — falls to the Admin hook's unknown-context default.
+The JS hook picks Admin vs Storefront from the command itself and redirects to the matching server. Detection is by path pattern first, then by script names that belong to one side — `lint:js`, `production`, `development`, `unit:components`, `eslint:app`, `eslint:components` and `stylelint:app` for Storefront, plus a bare `ludtwig`, which lints Storefront Twig templates and nothing else. `jest:base` carries no side-specific marker, so it cannot be classified this way: a command that also names the Storefront tree (path pattern or another Storefront-only script) is claimed by the Storefront hook, and every other `jest:base` invocation — including a bare one — falls to the Admin hook's unknown-context default.
 
 > [!NOTE]
 > Detection reads the whole command string, so a compound command that names both trees — `git diff -- src/Administration src/Storefront && npm run jest:base` — satisfies both detectors and is blocked twice, once per server. This applies to any command mentioning both trees, not only the base scripts.
 
-`lint:debugging`, `stylelint:base`, `prettier:base` and `jest:base` (Admin) and `eslint:app`, `eslint:components`, `stylelint:app` and `jest:base` (Storefront) are the target-less base npm scripts the corresponding MCP tools route path-scoped runs at directly — see [reference.md](./reference.md) for the routing rules. They are blocked the same as every other script below.
+Tool binaries are blocked when run directly at a command position, in three forms:
 
-| Bash Command                                                                                                | Admin MCP Tool    | Storefront MCP Tool |
-|-------------------------------------------------------------------------------------------------------------|-------------------|---------------------|
-| `npm run lint`, `npx eslint`                                                                                | `eslint_check`    | `eslint_check`      |
-| `npm run lint:js`                                                                                           | N/A               | `eslint_check`      |
-| `npm run lint:debugging`                                                                                    | `eslint_check`    | N/A                 |
-| `npm run eslint:app`, `npm run eslint:components`                                                           | N/A               | `eslint_check`      |
-| `npm run lint:fix`                                                                                          | `eslint_fix`      | `eslint_fix`        |
-| `npm run lint:js:fix`                                                                                       | N/A               | `eslint_fix`        |
-| `npm run lint:scss`, `npx stylelint`                                                                        | `stylelint_check` | `stylelint_check`   |
-| `npm run stylelint:base`                                                                                    | `stylelint_check` | N/A                 |
-| `npm run stylelint:app`                                                                                     | N/A               | `stylelint_check`   |
-| `npm run lint:scss-fix`                                                                                     | `stylelint_fix`   | `stylelint_fix`     |
-| `npm run format`, `npx prettier`                                                                            | `prettier_check`  | N/A (Admin only)    |
-| `npm run prettier:base`                                                                                     | `prettier_check`  | N/A (Admin only)    |
-| `npm run format:fix`                                                                                        | `prettier_fix`    | N/A (Admin only)    |
-| `npm run unit`, `npx jest`                                                                                  | `jest_run`        | `jest_run`          |
-| `npm run jest:base`                                                                                         | `jest_run`        | `jest_run`          |
-| `npm run lint:types`, `npx tsc`                                                                             | `tsc_check`       | N/A (Admin only)    |
-| `npm run lint:all`                                                                                          | `lint_all`        | N/A (Admin only)    |
-| `npm run lint:twig`                                                                                         | `lint_twig`       | N/A (Admin only)    |
-| `npm run build`                                                                                             | `vite_build`      | N/A                 |
-| `npm run unit:components` (and `:watch` / `:coverage`), `npx vitest`, `composer storefront:components:unit` | N/A               | `vitest_run`        |
-| `composer ludtwig:storefront`, bare `ludtwig`                                                               | N/A               | `ludtwig_check`     |
-| `composer ludtwig:storefront:fix`                                                                           | N/A               | `ludtwig_fix`       |
-| `npm run production/development`                                                                            | N/A               | `webpack_build`     |
+- `npx <binary>`, `npm exec <binary>` or its alias `npm x <binary>`, with an optional version suffix (`npx eslint@9`).
+- `<path>/node_modules/.bin/<binary>`.
+- The command-string form, `npx -c '<string>'`, `npm exec -c "<string>"` or `--call`, when the string runs the binary at its start or after `;`, `&&` or `|` (`npm exec --no -c "cd ../.. && eslint views/components"`).
+
+The binaries are `eslint`, `stylelint` and `jest` on both servers, `prettier` and `tsc` on Administration only, and `vitest` on Storefront only. Between the runner and the binary the hooks look past `-y`, `--yes`, `--no`, `--no-install`, `-q`, `--quiet`, `--silent` and `--`. Before `-c` they look past the same flags except `--`, plus `--package`, `-p`, `--workspace` and `-w` with their value.
+
+Not blocked:
+
+- A flag that takes a value before the binary (`npx --package=eslint eslint`, `npm exec --workspace foo -- eslint`). Reading its value as the binary would also block `npm exec --package eslint some-other-tool`.
+- A bare binary name (`eslint`, `jest`). A command-position match would block a commit message containing `; eslint config`.
+- A binary name in an argument.
+
+[reference.md](./reference.md) describes how each MCP tool routes its own path-scoped runs. The table still lists `stylelint:base`, `prettier:base`, `jest:base`, `eslint:app`, `eslint:components` and `stylelint:app`, which Shopware's `package.json` files do not define, because a project can define them.
+
+| Bash Command                                                                                                                                               | Admin MCP Tool    | Storefront MCP Tool |
+|------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|---------------------|
+| `npm run lint`, `npx eslint`, `npm exec eslint`, `node_modules/.bin/eslint`                                                                                | `eslint_check`    | `eslint_check`      |
+| `npm run lint:js`                                                                                                                                          | N/A               | `eslint_check`      |
+| `npm run lint:debugging`                                                                                                                                   | `eslint_check`    | N/A                 |
+| `npm run eslint:app`, `npm run eslint:components`                                                                                                          | N/A               | `eslint_check`      |
+| `npm run lint:fix`                                                                                                                                         | `eslint_fix`      | `eslint_fix`        |
+| `npm run lint:js:fix`                                                                                                                                      | N/A               | `eslint_fix`        |
+| `npm run lint:scss`, `npx stylelint`, `npm exec stylelint`, `node_modules/.bin/stylelint`                                                                  | `stylelint_check` | `stylelint_check`   |
+| `npm run stylelint:base`                                                                                                                                   | `stylelint_check` | N/A                 |
+| `npm run stylelint:app`                                                                                                                                    | N/A               | `stylelint_check`   |
+| `npm run lint:scss-fix`                                                                                                                                    | `stylelint_fix`   | `stylelint_fix`     |
+| `npm run format`, `npx prettier`, `npm exec prettier`, `node_modules/.bin/prettier`                                                                        | `prettier_check`  | N/A (Admin only)    |
+| `npm run prettier:base`                                                                                                                                    | `prettier_check`  | N/A (Admin only)    |
+| `npm run format:fix`                                                                                                                                       | `prettier_fix`    | N/A (Admin only)    |
+| `npm run unit`, `npx jest`, `npm exec jest`, `node_modules/.bin/jest`                                                                                      | `jest_run`        | `jest_run`          |
+| `npm run jest:base`                                                                                                                                        | `jest_run`        | `jest_run`          |
+| `npm run lint:types`, `npx tsc`, `npm exec tsc`, `node_modules/.bin/tsc`                                                                                   | `tsc_check`       | N/A (Admin only)    |
+| `npm run lint:all`                                                                                                                                         | `lint_all`        | N/A (Admin only)    |
+| `npm run lint:twig`                                                                                                                                        | `lint_twig`       | N/A (Admin only)    |
+| `npm run build`                                                                                                                                            | `vite_build`      | N/A                 |
+| `npm run unit:components` (and `:watch` / `:coverage`), `npx vitest`, `npm exec vitest`, `node_modules/.bin/vitest`, `composer storefront:components:unit` | N/A               | `vitest_run`        |
+| `composer ludtwig:storefront`, bare `ludtwig`                                                                                                              | N/A               | `ludtwig_check`     |
+| `composer ludtwig:storefront:fix`                                                                                                                          | N/A               | `ludtwig_fix`       |
+| `npm run production/development`                                                                                                                           | N/A               | `webpack_build`     |
 
 `npm run unit` and `npm run unit:components` are matched by separate patterns, so the component suite is redirected to `vitest_run` and never to `jest_run`. The `:fix` ludtwig pattern is tested before the plain one, so `composer ludtwig:storefront:fix` resolves to `ludtwig_fix` rather than being shadowed by `ludtwig_check`.
 
-Commands that aren't blocked: `npm install`, `composer install`, watch-mode scripts other than `npm run unit:components:watch`, and any npm script that doesn't match one of the patterns above.
+Commands that aren't blocked: `npm install`, `composer install`, watch-mode scripts other than `npm run unit:components:watch`, any npm script that doesn't match one of the patterns above, the bare binary names described above, and `npx`, `npm exec` or `npm x` running a tool not named in the table.
 
 ## 🔗 Plugin Integration
 
-Other plugins can pull these tools into their own skills or agents by referencing them in frontmatter. The MCP tool name is `mcp__<server>__<tool>`:
-
-```markdown
----
-tools: mcp__php-tooling__phpstan_analyze, mcp__php-tooling__ecs_check, mcp__js-admin-tooling__eslint_check
----
-```
+Other plugins can pull these tools into their own skills or agents by naming the short tool on its server. Cursor agents list those names in the agent body rather than a host-prefixed `mcp__` form.
 
 The `test-writing` plugin in this marketplace is a working example.

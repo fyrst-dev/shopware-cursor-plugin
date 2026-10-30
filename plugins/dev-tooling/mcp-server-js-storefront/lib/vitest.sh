@@ -30,20 +30,19 @@ tool_vitest_run() {
 
     worktree_enter "${args}" || return 1
 
+    # The component suite is core-only, so default_scope is ignored and a plugin scope refused.
     local scope_arg
     scope_arg=$(echo "${args}" | jq -r '.scope // empty' 2>/dev/null || echo "")
-    if ! resolve_scope "${scope_arg}"; then
+    if [[ -n "${scope_arg}" && "${scope_arg}" != "shopware" ]]; then
+        printf '%s\n' "Refusing to run vitest_run under scope \"${scope_arg}\": the Storefront component suite under views/components/ belongs to the core Storefront and runs only from the project root. Omit scope, or pass \"shopware\"."
+        return 1
+    fi
+    if ! resolve_scope "shopware"; then
         echo "Scope resolution error"
         return 1
     fi
 
-    SCOPE_JS_SUBDIR=""
-    if [[ "${SCOPE_NAME}" != "shopware" ]]; then
-        # shellcheck disable=SC2034  # consumed by shared/environment.sh (get_js_workdir) via dynamic scope
-        SCOPE_JS_SUBDIR=$(scope_get_tool_field jest cwd)
-    fi
-
-    worktree_assert_dependencies || return 1
+    scope_assert_dependencies || return 1
 
     local coverage
     coverage=$(echo "${args}" | jq -r '.coverage // false')

@@ -4,26 +4,6 @@
 set -euo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
 
-# _run_scope_bootstrap <tool>
-# Runs scope.<tool>.bootstrap[] via exec_command in sequence. Any non-zero
-# exit aborts with an MCP-facing error message on stdout.
-_run_scope_bootstrap() {
-    local tool="$1"
-    local cmd
-    while IFS= read -r cmd; do
-        [[ -z "${cmd}" ]] && continue
-        log "INFO" "Scope bootstrap [${tool}]: ${cmd}"
-        local output rc=0
-        output=$(exec_command "${cmd}") || rc=$?
-        if [[ "${rc}" -ne 0 ]]; then
-            echo "Scope bootstrap failed for tool '${tool}' (exit ${rc}):"
-            echo "${output}"
-            return 1
-        fi
-    done < <(scope_get_bootstrap "${tool}")
-    return 0
-}
-
 # tool_phpstan_analyze - MCP tool function
 # Args: $1 = JSON arguments
 # Returns: Raw PHPStan output (JSON or text based on error_format)
@@ -46,14 +26,12 @@ tool_phpstan_analyze() {
 
     worktree_assert_dependencies || return 1
 
-    if ! _run_scope_bootstrap phpstan; then
-        return 1
-    fi
-
     local default_config default_memory
-    default_config=$(scope_get_tool_field phpstan config)
-    [[ -z "${default_config}" ]] && default_config=$(_get_config_value ".phpstan.config")
-    default_memory=$(_get_config_value ".phpstan.memory_limit")
+    scope_tool_field_or_refuse default_config phpstan config || return 1
+    if [[ -z "${default_config}" ]]; then
+        default_config=$(_get_config_value ".phpstan.config") || return 1
+    fi
+    default_memory=$(_get_config_value ".phpstan.memory_limit") || return 1
 
     local parsed
     if ! parsed=$(echo "${args}" | jq -c '{
@@ -98,6 +76,12 @@ tool_phpstan_analyze() {
     fi
     if [[ -n "${level}" ]] && ! guard=$(assert_no_shell_hostile_chars "level" "${level}"); then
         printf '%s\n' "${guard}"
+        return 1
+    fi
+
+    # After every argument guard: the bootstrap runs project commands, so a
+    # refused call must not have run them.
+    if ! _run_scope_bootstrap phpstan; then
         return 1
     fi
 
